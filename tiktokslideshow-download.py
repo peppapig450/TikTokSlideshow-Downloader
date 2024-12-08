@@ -5,17 +5,15 @@ from pathlib import Path
 
 import requests
 import yt_dlp
+from browser_cookie3 import brave, chrome, edge, firefox, opera
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.types import *
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-from browser_cookie3 import chrome, firefox, edge, opera, brave
-
 
 # Map browser names to their browser_cookie3 functions
 BROWSER_MAP = {
@@ -25,6 +23,7 @@ BROWSER_MAP = {
     "opera": opera,
     "brave": brave,
 }
+
 
 def load_cookies_from_browser(browser_name: str):
     """
@@ -37,12 +36,12 @@ def load_cookies_from_browser(browser_name: str):
     browser_name = browser_name.lower()
     fetch_cookies = BROWSER_MAP.get(browser_name)
     if not fetch_cookies:
-        raise ValueError(f"Unsupported browser '{browser_name}'. Supported browsers: {', '.join(BROWSER_MAP.keys())}.")
-    
+        raise ValueError(
+            f"Unsupported browser '{browser_name}'. Supported browsers: {', '.join(BROWSER_MAP.keys())}."
+        )
+
     # Fetch cookies for TikTok, with optional profile name
     return fetch_cookies(domain_name="tiktok.com")
-
-    
 
 
 def load_cookies_from_file(file_path: str):
@@ -52,16 +51,15 @@ def load_cookies_from_file(file_path: str):
     :param file_path: Path to the JSON file.
     :return: List of cookies as dictionaries.
     """
-    with open(file_path, "r") as f:
-        return json.load(f)
-    
-    
+    return json.loads(Path(file_path).read_text())
+
+
 # TODO: auto load cookies from browser files
 # Load cookies into the browser
 def load_cookies(driver, cookies):
     """
     Load cookies into the Selenium WebDriver.
-    
+
     :param driver: Selenium WebDriver instance.
     :param cookies: List of cookies to add.
     """
@@ -157,7 +155,9 @@ def is_slideshow(url: str):
 
 # Download a TikTok video
 # TODO: error handling in case it's a priv video? tell user to retry specifying cookies
-def download_video(url, output_dir, cookies: str | None, browser_name=None, profile_name="default"):
+def download_video(
+    url, output_dir, cookies: str | None, browser_name=None, profile_name="default"
+):
     """
     Downloads a TikTok video using yt-dlp, with support for cookies.
 
@@ -173,8 +173,10 @@ def download_video(url, output_dir, cookies: str | None, browser_name=None, prof
         cookies_path = Path(cookies)
         if cookies_path.exists() and cookies_path.is_file():
             if "txt" not in cookies_path.suffix:
-                raise ValueError(f"{cookies} is not a txt file. When downloading videos a Netscape formatted txt file is required, or use the browser based cookie loading.")
-        
+                raise ValueError(
+                    f"{cookies} is not a txt file. When downloading videos a Netscape formatted txt file is required, or use the browser based cookie loading."
+                )
+
         # TODO: use common dictionary then modify it based on the cookies method
         # Pass cookie file for yt-dlp
         ydl_opts = {
@@ -191,11 +193,14 @@ def download_video(url, output_dir, cookies: str | None, browser_name=None, prof
             "format": "best",  # Specify format
             "noplaylist": True,  # Single video download
             "quiet": False,  # Verbose output
-            "cookiesfrombrowser": (browser_name, profile_name) # Pass browser and profile name
+            "cookiesfrombrowser": (
+                browser_name,
+                profile_name,
+            ),  # Pass browser and profile name
         }
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             ydl.download([url])
             print("Video downloaded successfully.")
     except Exception as e:
@@ -204,37 +209,45 @@ def download_video(url, output_dir, cookies: str | None, browser_name=None, prof
 
 def main():
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Download TikTok slideshows or videos.")
+    parser = argparse.ArgumentParser(
+        description="Download TikTok slideshows or videos."
+    )
     parser.add_argument("link", help="TikTok video/slideshow link")
 
     parser.add_argument(
         "--output", required=True, help="Output folder for downloaded images"
     )
-    
+
     # Create a mutually exclusive group for cookies input
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--browser", choices=BROWSER_MAP.keys(), help="Browser to load cookies from")
-    group.add_argument("--cookies", help="Path to the cookies JSON file")
-    
-    parser.add_argument(
-        "--profile", default="default", help="Browser profile name to load cookies from (default: 'default')"
+    group.add_argument(
+        "--browser", choices=BROWSER_MAP.keys(), help="Browser to load cookies from"
     )
-    
+    group.add_argument("--cookies", help="Path to the cookies JSON file")
+
+    parser.add_argument(
+        "--profile",
+        default="default",
+        help="Browser profile name to load cookies from (default: 'default')",
+    )
+
     args = parser.parse_args()
-    
+
     browser_name = None
     cookies = None
-    
+
     # Load cookies based on input method
     if args.browser:
-        print(f"Loading cookies from browser: {args.browser} with profile: {args.profile}")
+        print(
+            f"Loading cookies from browser: {args.browser} with profile: {args.profile}"
+        )
         cookies = load_cookies_from_browser(args.browser)
         browser_name = args.browser
     elif args.cookies:
         print(f"Loading cookies from file: {args.cookies}")
         cookies = load_cookies_from_file(args.cookies)
         browser_name = None
-        
+
     # Decide based on URl content type
     if is_slideshow(args.link):
         print("Detected slideshow. Downloading images...")
@@ -251,7 +264,7 @@ def main():
     elif not is_slideshow(args.link):
         print("Detected video. Downloading video...")
 
-        download_video(args.link, args.output, cookies, browser_name, args.profile) 
+        download_video(args.link, args.output, cookies, browser_name, args.profile)
     else:
         print("Link neither a video nor slideshow...")
 
