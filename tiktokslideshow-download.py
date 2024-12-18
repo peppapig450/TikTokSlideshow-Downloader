@@ -265,22 +265,22 @@ def extract_video_id(url):
     Short URLs (such as those shared externally) need a GET request to resolve the full URL first
     """
     # retrieve the 19 digit video ID, rest is optional
-    video_id_regex = re.compile(r'.*tiktok.com/.*/(\d{19})(\?.*)?')
+    video_id_pattern = re.compile(r'tiktok\.com/.*/(\d{19})(?:\?.*)?')
 
-    video_id = video_id_regex.match(url)
+    # Attempt to find the video ID in the given URL
+    match = video_id_pattern.search(url)
 
-    # there's no match, check if its a tiktok URL and resolve it
-    if video_id is None:
+    if not match:
+        # there's no match, check if its a tiktok URL and resolve it
         if "tiktok" not in url:
-            raise RuntimeError("URL is not a tiktok URL")
-        long_url = requests.get(url).url
-        video_id = video_id_regex.match(long_url)
-        print(long_url)
-        if video_id is None:
-            raise RuntimeError("Cannot resolve parse video ID from url")
+            raise RuntimeError("URL is not a valid TikTok URL")
+        resolved_url = requests.get(url).url
+        match = video_id_pattern.search(resolved_url)
+        if not match:
+            raise RuntimeError("Failed to extract video ID from the URL")
 
-    video_id=video_id.group(1)
-    return video_id
+    # Return the captured video ID
+    return match.group(1)
 
 def main():
     # Parse command-line args
