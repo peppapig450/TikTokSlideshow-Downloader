@@ -1,6 +1,7 @@
 import argparse
 import itertools
 import json
+import re
 from pathlib import Path
 
 import requests
@@ -129,6 +130,26 @@ def parse_slideshow_links(html):
     )
     return flat_image_links
 
+# Parse image links from the slideshow
+def parse_slideshow_links_with_index(html):
+    soup = BeautifulSoup(html, "html.parser")
+    image_tags = soup.select(".css-brxox6-ImgPhotoSlide.e10jea832")
+    image_links = [(img["src"],img.parent["data-swiper-slide-index"] ) for img in image_tags if "src" in img.attrs and img.parent]
+
+    # Flatten any nested lists
+    flat_image_links = list(
+        itertools.chain(
+            *[
+                sublist if isinstance(sublist, list) else [sublist]
+                for sublist in image_links
+            ]
+        )
+    )
+
+    # dedup list so each entry is only downloaded once
+    flat_image_links: list[tuple[str,int]] = list(dict.fromkeys(flat_image_links))
+    return flat_image_links
+
 
 # Download images
 def download_images(image_links: list[str], output_dir):
@@ -148,6 +169,23 @@ def download_images(image_links: list[str], output_dir):
         except requests.RequestException as e:
             print(f"Failed to download {link}: {e}")
 
+# Download images
+def download_images_with_index(video_id, image_links: list[tuple[str,int]], output_dir):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    for (link,index) in image_links:
+        try:
+            response = requests.get(link, stream=True)
+            response.raise_for_status()
+            file_name = f"[{video_id}]-{index}-" + link.split("/")[-1].split("?")[0]
+            file_path = output_dir / file_name
+            with file_path.open("wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+            print(f"Downloaded: {file_name}")
+        except requests.RequestException as e:
+            print(f"Failed to download {link}: {e}")
 
 # Detect content type using regex
 def is_slideshow(url: str):
@@ -156,10 +194,11 @@ def is_slideshow(url: str):
 
 # Download a TikTok video
 # TODO: error handling in case it's a priv video? tell user to retry specifying cookies
-def download_video(url, output_dir, cookies_file):
+def download_video(video_id, url, output_dir, cookies_file):
     """
     Downloads a TikTok video using yt-dlp, with support for cookies.
 
+    :param video_id: The video ID to download.
     :param url: The URL of the TikTok video.
     :param output_dir: Directory to save the downloaded video.
     :param cookies_file: Path to the cookies JSON file.
@@ -167,7 +206,7 @@ def download_video(url, output_dir, cookies_file):
     netscape_cookies = json_to_netscape(cookies_file)
 
     ydl_opts = {
-        "outtmpl": f"{output_dir}/%(title)s.%(ext)s",  # Save with video title as filename
+        "outtmpl": f"{output_dir}/[{video_id}]%(title)s.%(ext)s",  # Save with video title as filename
         "format": "best",  # Specify  format
         "noplaylist": True,  # Single video download
         "quiet": False,  # Verbose output
@@ -177,10 +216,71 @@ def download_video(url, output_dir, cookies_file):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
             print("Video downloaded successfully.")
     except Exception as e:
         print(f"Failed to download video: {e}")
 
+def check_audio_only(url, cookies_file):
+    """
+    Extracts Tiktok metadata and evaluates if it is audio-only
+
+    audio-only Tiktoks are almost always slideshows with
+    /video/ instead of /photo/ in the url
+
+    :param url: The URL of the TikTok video.
+    :param cookies_file: Path to the cookies JSON file.
+    """
+    netscape_cookies = json_to_netscape(cookies_file)
+
+    ydl_opts = {
+        "format": "best",  # Specify  format
+        "noplaylist": True,  # Single video download
+        "quiet": False,  # Verbose output
+        "cookiefile": netscape_cookies,  # Use cookies
+        "nodownload":True, # Don't download the video
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            video_metadata = ydl.extract_info(url)
+            if video_metadata is None:
+                raise RuntimeError("Video has no metadata")
+
+            audio_only = video_metadata["resolution"] == "audio only"
+
+            if audio_only:
+                print("Video URL is actually audio only, treating as a slideshow")
+
+            return audio_only
+
+    except Exception as e:
+        print(f"Failed to download video metadata: {e}")
+
+def extract_video_id(url):
+    """
+    Extracts video ID first with a regex or GET request
+
+    Long video URLs which already have the video ID at the end are extracted
+    Short URLs (such as those shared externally) need a GET request to resolve the full URL first
+    """
+    # retrieve the 19 digit video ID, rest is optional
+    video_id_regex = re.compile(r'.*tiktok.com/.*/(\d{19})(\?.*)?')
+
+    video_id = video_id_regex.match(url)
+
+    # there's no match, check if its a tiktok URL and resolve it
+    if video_id is None:
+        if "tiktok" not in url:
+            raise RuntimeError("URL is not a tiktok URL")
+        long_url = requests.get(url).url
+        video_id = video_id_regex.match(long_url)
+        print(long_url)
+        if video_id is None:
+            raise RuntimeError("Cannot resolve parse video ID from url")
+
+    video_id=video_id.group(1)
+    return video_id
 
 def main():
     # Parse command-line args
@@ -194,23 +294,25 @@ def main():
     )
     args = parser.parse_args()
 
+    video_id = extract_video_id(args.link)
+
     # Decide based on URl content type
-    if is_slideshow(args.link):
+    if is_slideshow(args.link) or check_audio_only(args.link, args.cookies):
         print("Detected slideshow. Downloading images...")
         # Load cookies and fetch
         html = fetch_page(args.link, args.cookies)
 
         if html:
             # Parse and download images
-            if image_links := parse_slideshow_links(html):
+            if image_links := parse_slideshow_links_with_index(html):
                 print(f"Found {len(image_links)} images. Downloading...")
-                download_images(image_links, args.output)
+                download_images_with_index(video_id,image_links, args.output)
             else:
                 print("No images found.")
     elif not is_slideshow(args.link):
         print("Detected video. Downloading video...")
 
-        download_video(args.link, args.output, args.cookies)
+        download_video(video_id, args.link, args.output, args.cookies)
     else:
         print("Link neither a video nor slideshow...")
 
