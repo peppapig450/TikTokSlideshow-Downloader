@@ -162,3 +162,11 @@ cython_debug/
 #.idea/
 cookies.json
 testing/
+*.txt
+*.png
+*.jpg
+*.mp4
+*.jpeg
+*.webp
+*.mov
+*.mkv
