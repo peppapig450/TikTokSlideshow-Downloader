@@ -238,7 +238,7 @@ def check_audio_only(url, cookies_file):
         "noplaylist": True,  # Single video download
         "quiet": False,  # Verbose output
         "cookiefile": netscape_cookies,  # Use cookies
-        "nodownload":True, # Don't download the video
+        "skip_download":True, # Don't download the video
     }
 
     try:
