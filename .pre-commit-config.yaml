@@ -6,3 +6,4 @@ repos:
         entry: poetry export --format requirements.txt --without-hashes --output requirements.txt
         language: system
         files: ^poetry\.lock$
+        pass_filenames: false

@@ -27,6 +27,10 @@ mypy = "^1.15.0"
 ruff = "^0.11.6"
 types-requests = "^2.32.0.20250328"
 types-tqdm = "^4.67.0.20250417"
+pre-commit = "^4.2.0"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
 
 [tool.mypy]
 python_version = "3.11"
