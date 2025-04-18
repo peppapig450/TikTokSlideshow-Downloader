@@ -170,3 +170,5 @@ testing/
 *.webp
 *.mov
 *.mkv
+
+playwright_chrome_profile/
