@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: update-requirements
+        name: Update requirements.txt
+        entry: poetry export --format requirements.txt --without-hashes --output requirements.txt
+        language: system
+        files: ^poetry\.lock$
