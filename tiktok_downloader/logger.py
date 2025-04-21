@@ -35,8 +35,9 @@ class Logger:
 
     APP_NAME: Final[str] = "tiktok-downloader"
     APP_AUTHOR: Final[str] = "tiktok-downloader"
-    DEFAULT_FORMAT: Final[str] = "{asctime} - {name} - {levelname} - {message}"
-    CONSOLE_FORMAT: Final[str] = "{levelname}: {message}"
+
+    DEFAULT_FORMAT: Final[str] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    CONSOLE_FORMAT: Final[str] = "%(levelname)s: %(message)s"
 
     # Singleton instance and related bookkeeping
     _instance: ClassVar[Self | None] = None
@@ -126,7 +127,7 @@ class Logger:
         """
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self.console_level)
-        console_handler.setFormatter(logging.Formatter(self.CONSOLE_FORMAT, style="{"))
+        console_handler.setFormatter(logging.Formatter(self.CONSOLE_FORMAT, style="%"))
 
         file_handler = logging.handlers.RotatingFileHandler(
             filename=self.log_file,
@@ -135,7 +136,7 @@ class Logger:
             encoding="utf-8",
         )
         file_handler.setLevel(self.file_level)
-        file_handler.setFormatter(logging.Formatter(self.DEFAULT_FORMAT, style="{"))
+        file_handler.setFormatter(logging.Formatter(self.DEFAULT_FORMAT, style="%"))
 
         # Override any existing handlers
         logging.basicConfig(
