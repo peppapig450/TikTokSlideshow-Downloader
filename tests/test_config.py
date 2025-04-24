@@ -47,6 +47,7 @@ def test_default_config_all_keys_and_types() -> None:
     assert set(all_conf) == set(Config.DEFAULT_CONFIG)
     # And types should match exactly
     for k, v in all_conf.items():
+        assert is_config_key(k)
         expected = Config.DEFAULT_CONFIG[k]
         assert isinstance(v, type(expected))
     # log_level should be LogLevel enum
