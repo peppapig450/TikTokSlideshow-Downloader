@@ -10,8 +10,9 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from os import PathLike
 from pathlib import Path
-from platformdirs import user_data_dir
+import platformdirs
 from playwright.sync_api import Cookie as PlaywrightCookieType
 from typing import TypedDict, Protocol, Iterable, TextIO
 
@@ -174,3 +175,83 @@ def _write_netscape(
                     cookie,
                 )
                 continue
+
+
+class CookieManager:
+    """
+    Manages cookie storage and conversion for TikTok extraction.
+
+    This class allows loading and saving cookies to JSON files,
+    converting them to Netscape format, and simplifying for browser use.
+
+    Attributes:
+        storage_dir: Directory path where cookie profiles are stored.
+    """
+
+    def __init__(self, storage_dir: PathLike | None = None) -> None:
+        """
+        Initialize a CookieManager instance.
+
+        Args:
+            storage_dir (PathLike | None, optional): Directory in which
+                to store cookie profiles. If None, uses the platform-specific
+                user data directory.
+        """
+        if storage_dir is None:
+            data_dir = platformdirs.user_data_dir(
+                appname="tiktok_extractor", appauthor="TikTokExtractor"
+            )
+            self.storage_dir = Path(data_dir)
+        else:
+            self.storage_dir = Path(storage_dir)
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+
+    def load(self, profile: str) -> list[JSONCookie]:
+        """
+        Load cookies from a JSON profile file.
+
+        Args:
+            profile (str): Name of the cookie profile (without extension).
+
+        Returns:
+            list[JSONCookie]: A list of JSONCookie dicts.
+
+        Raises:
+            FileNotFoundError: If the profile file does not exist.
+            ValueError: If the file contains invalid JSON.
+        """
+        path = self.storage_dir / f"{profile}.json"
+        if not path.is_file():
+            msg = f"Cookie file not found: {path}"
+            logger.error(msg)
+            raise FileNotFoundError(msg)
+        try:
+            logger.debug("Loading cookies from %s", path)
+            # XXX: Pydantic for type safe JSON loading, but for now ignore.
+            return json.loads(path.read_text(encoding="utf-8"))  # type: ignore
+        except json.JSONDecodeError as e:
+            msg = f"Invalid JSON in cookie file {path}"
+            logger.exception(msg)
+            raise ValueError(msg) from e
+
+    def save(self, cookies: list[JSONCookie], profile: str) -> Path:
+        """Save cookies to  JSON profile file.
+
+        Args:
+            cookies (list[JSONCookie]): List of JSONCookie dicts to save.
+            profile (str): Name of the cookie profile (without extension).
+
+        Returns:
+            Path: Path to the saved JSON file.
+
+        Raises:
+            OSError: On failure to write to disk.
+        """
+        path = self.storage_dir / f"{profile}.json"
+        try:
+            path.write_text(json.dumps(cookies, indent=2), encoding="utf-8")
+            logger.info("Saved %d cookies to %s", len(cookies), path)
+            return path
+        except Exception:
+            logger.exception("Failed to save cookies")
+            raise
