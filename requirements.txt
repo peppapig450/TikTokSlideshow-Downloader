@@ -8,6 +8,8 @@ playwright==1.51.0
 pyee==12.1.1
 requests==2.32.3
 tqdm==4.67.1
+types-requests==2.32.0.20250328
+types-tqdm==4.67.0.20250417
 typing-extensions==4.13.2
 urllib3==2.4.0
 yt-dlp==2025.3.31

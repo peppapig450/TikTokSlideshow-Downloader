@@ -424,6 +424,12 @@ dev = [
     { name = "types-tqdm" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "types-requests" },
+    { name = "types-tqdm" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.8,<9.0.0" },
@@ -441,6 +447,12 @@ requires-dist = [
     { name = "yt-dlp", specifier = ">=2025.3.31,<2026.0.0" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "types-requests", specifier = ">=2.32.0.20250328" },
+    { name = "types-tqdm", specifier = ">=4.67.0.20250417" },
+]
 
 [[package]]
 name = "tqdm"

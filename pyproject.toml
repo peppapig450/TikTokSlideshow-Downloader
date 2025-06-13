@@ -68,6 +68,12 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+[dependency-groups]
+dev = [
+    "types-requests>=2.32.0.20250328",
+    "types-tqdm>=4.67.0.20250417",
+]
+
 [tool.ruff.lint.isort]
 known-first-party = ["tiktok_downloader"]
 
