@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import click
+import requests
+from tqdm import tqdm
 
 from . import Config, CookieManager, LogLevel, PartialConfigDict, get_logger, parse_tiktok_url
 from .config import ConfigKey, is_config_key
@@ -34,6 +36,30 @@ def _collect_config_updates(**options: Any) -> PartialConfigDict:
             cfg_key: ConfigKey = key
             updates[cfg_key] = value
     return updates
+
+
+def _stream_download(url: str, dest: Path, cfg: Config) -> None:
+    """Download a URL to ``dest`` showing a tqdm progress bar."""
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+
+    total = int(response.headers.get("content-length", 0))
+    chunk_size = cfg.get("chunk_size")
+
+    progress = tqdm(
+        total=total or None,
+        unit="B",
+        unit_scale=True,
+        leave=False,
+    )
+
+    with dest.open("wb") as file:
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            if not chunk:
+                continue
+            file.write(chunk)
+            progress.update(len(chunk))
+    progress.close()
 
 
 @main.command()
@@ -88,3 +114,9 @@ def download(  # noqa: PLR0913
 
     info = parse_tiktok_url(url)
     logger.info("Parsed URL info: %s", info)
+
+    output_dir = cfg.download_path
+    output_dir.mkdir(parents=True, exist_ok=True)
+    dest = output_dir / f"{info.video_id}.bin"
+    _stream_download(info.resolved_url, dest, cfg)
+    tqdm.write(f"Saved to {dest}")
