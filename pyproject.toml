@@ -1,0 +1,75 @@
+[project]
+name = "tiktok-downloader"
+version = "0.1.0"
+description = ""
+authors = [{ name = "peppapig450", email = "peppapig450@pm.me" }]
+requires-python = ">=3.11,<=3.13"
+readme = "README.md"
+license = { text = "MIT" }
+
+dependencies = [
+    "playwright>=1.51.0,<2.0.0",
+    "requests>=2.32.3,<3.0.0",
+    "click>=8.1.8,<9.0.0",
+    "yt-dlp>=2025.3.31,<2026.0.0",
+    "tqdm>=4.67.1,<5.0.0",
+    "platformdirs>=4.3.7,<5.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5,<9",
+    "pytest-asyncio>=0.26.0,<0.27",
+    "mypy>=1.15.0,<2",
+    "ruff>=0.11.6,<0.12",
+    "types-requests>=2.32.0.20250328,<3",
+    "types-tqdm>=4.67.0.20250417,<5",
+    "pre-commit>=4.2.0,<5"
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["yt_dlp.*", "bs4.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+output-format = "full"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "SIM", "NPY", "RUF", "PL", "C", "W"]
+ignore = []
+exclude = [".git", ".ruff_cache", "__pycache__", "dist"]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["tiktok_downloader"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
