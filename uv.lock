@@ -403,7 +403,7 @@ wheels = [
 [[package]]
 name = "tiktok-downloader"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "platformdirs" },
@@ -413,7 +413,7 @@ dependencies = [
     { name = "yt-dlp" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "mypy" },
     { name = "pre-commit" },
@@ -427,23 +427,20 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.8,<9.0.0" },
-    { name = "platformdirs", specifier = ">=4.3.7" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15.0,<2" },
+    { name = "platformdirs", specifier = ">=4.3.7,<5.0.0" },
     { name = "playwright", specifier = ">=1.51.0,<2.0.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0,<5" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5,<9" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.26.0,<0.27" },
     { name = "requests", specifier = ">=2.32.3,<3.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.6,<0.12" },
     { name = "tqdm", specifier = ">=4.67.1,<5.0.0" },
+    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.0.20250328,<3" },
+    { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.67.0.20250417,<5" },
     { name = "yt-dlp", specifier = ">=2025.3.31,<2026.0.0" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.15.0,<2" },
-    { name = "pre-commit", specifier = ">=4.2.0,<5" },
-    { name = "pytest", specifier = ">=8.3.5,<9" },
-    { name = "pytest-asyncio", specifier = ">=0.26.0,<0.27" },
-    { name = "ruff", specifier = ">=0.11.6,<0.12" },
-    { name = "types-requests", specifier = ">=2.32.0.20250328,<3" },
-    { name = "types-tqdm", specifier = ">=4.67.0.20250417,<5" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "tqdm"
