@@ -16,6 +16,9 @@ dependencies = [
     "platformdirs>=4.3.7,<5.0.0"
 ]
 
+[project.scripts]
+tiktok-downloader = "tiktok_downloader.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
