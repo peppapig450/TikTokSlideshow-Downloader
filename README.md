@@ -9,12 +9,6 @@ command to fetch a TikTok video or slideshow:
 tiktok-downloader download <url> [OPTIONS]
 ```
 
-Alternatively, run the module directly:
-
-```bash
-python -m tiktok_downloader download <url> [OPTIONS]
-```
-
 Run ``tiktok-downloader download --help`` to see all configuration options.
 
 To export cookies saved in a JSON profile:
@@ -22,3 +16,13 @@ To export cookies saved in a JSON profile:
 ```bash
 tiktok-downloader cookies export <profile> <destination>
 ```
+
+## Module entry point
+
+Run the CLI with:
+
+```bash
+python -m tiktok_downloader download <url> [OPTIONS]
+```
+
+This entry point loads your configuration and handles Ctrl+C gracefully.
