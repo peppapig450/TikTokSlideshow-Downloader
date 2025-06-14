@@ -72,3 +72,27 @@ def test_help_output() -> None:
     result = runner.invoke(main, ["download", "--help"])
     assert result.exit_code == 0
     assert "Usage:" in result.output
+
+
+def test_cookies_export(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    sample = [
+        {
+            "name": "sid",
+            "value": "1",
+            "domain": ".tiktok.com",
+            "path": "/",
+            "secure": False,
+            "expirationDate": 0,
+        }
+    ]
+    monkeypatch.setattr(
+        "tiktok_downloader.cli.CookieManager.load",
+        lambda self, profile: sample,
+    )
+
+    runner = CliRunner()
+    dest = tmp_path / "cookies.txt"
+    result = runner.invoke(main, ["cookies", "export", "test", str(dest)])
+    assert result.exit_code == 0
+    assert dest.exists()
+    assert "# Netscape HTTP Cookie File" in dest.read_text()
