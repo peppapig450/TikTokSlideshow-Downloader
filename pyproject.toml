@@ -44,6 +44,7 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
+exclude = 'tiktokslideshow-download\.py$'
 
 [[tool.mypy.overrides]]
 module = ["yt_dlp.*", "bs4.*"]
@@ -57,7 +58,7 @@ output-format = "full"
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "SIM", "NPY", "RUF", "PL", "C", "W"]
 ignore = []
-exclude = [".git", ".ruff_cache", "__pycache__", "dist"]
+exclude = [".git", ".ruff_cache", "__pycache__", "dist", "tiktokslideshow-download.py"]
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
