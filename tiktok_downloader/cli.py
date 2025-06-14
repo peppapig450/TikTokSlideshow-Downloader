@@ -105,18 +105,25 @@ def download(  # noqa: PLR0913
 
     logger.info("Configuration loaded: %r", cfg.all)
 
-    if cookie_profile:
-        try:
-            cookies = CookieManager().load(cookie_profile)
-            logger.info("Loaded %d cookies from profile '%s'", len(cookies), cookie_profile)
-        except Exception as exc:
-            logger.error("Failed to load cookies: %s", exc)
+    try:
+        if cookie_profile:
+            try:
+                cookies = CookieManager().load(cookie_profile)
+                logger.info("Loaded %d cookies from profile '%s'", len(cookies), cookie_profile)
+            except Exception as exc:
+                logger.error("Failed to load cookies: %s", exc)
 
-    info = parse_tiktok_url(url)
-    logger.info("Parsed URL info: %s", info)
+        info = parse_tiktok_url(url)
+        logger.info("Parsed URL info: %s", info)
 
-    output_dir = cfg.download_path
-    output_dir.mkdir(parents=True, exist_ok=True)
-    dest = output_dir / f"{info.video_id}.bin"
-    _stream_download(info.resolved_url, dest, cfg)
-    tqdm.write(f"Saved to {dest}")
+        output_dir = cfg.download_path
+        output_dir.mkdir(parents=True, exist_ok=True)
+        dest = output_dir / f"{info.video_id}.bin"
+        _stream_download(info.resolved_url, dest, cfg)
+        tqdm.write(f"Saved to {dest}")
+    except requests.RequestException as exc:
+        raise click.ClickException(f"Network error: {exc}") from exc
+    except ValueError as exc:
+        raise click.ClickException(f"Invalid input: {exc}") from exc
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
