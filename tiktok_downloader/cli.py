@@ -9,8 +9,16 @@ import click
 import requests
 from tqdm import tqdm
 
-from . import Config, CookieManager, LogLevel, PartialConfigDict, get_logger, parse_tiktok_url
+from . import (
+    Config,
+    CookieManager,
+    LogLevel,
+    PartialConfigDict,
+    get_logger,
+    parse_tiktok_url,
+)
 from .config import ConfigKey, is_config_key
+from .cookies import _write_netscape
 
 logger = get_logger(__name__)
 
@@ -60,6 +68,25 @@ def _stream_download(url: str, dest: Path, cfg: Config) -> None:
             file.write(chunk)
             progress.update(len(chunk))
     progress.close()
+
+
+@main.group()
+def cookies() -> None:
+    """Cookie management commands."""
+
+
+@cookies.command()
+@click.argument("profile")
+@click.argument("dest", type=click.Path(path_type=Path))
+def export(profile: str, dest: Path) -> None:
+    """Export cookies in Netscape format."""
+    try:
+        cookies = CookieManager().load(profile)
+        with Path(dest).open("w", encoding="utf-8") as file:
+            _write_netscape(cookies, file)
+        logger.info("Exported %d cookies to %s", len(cookies), dest)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @main.command()
