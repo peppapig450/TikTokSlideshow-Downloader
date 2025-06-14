@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from typing import Any
 
 import pytest
 import requests
@@ -7,8 +6,8 @@ import requests
 from tiktok_downloader import BaseExtractor, Config
 
 
-class DummyExtractor(BaseExtractor):
-    def extract(self, url: str) -> Any:
+class DummyExtractor(BaseExtractor[str]):
+    def extract(self, url: str) -> str:
         return url
 
 
@@ -32,7 +31,7 @@ def test_user_agent_rotation(monkeypatch: pytest.MonkeyPatch) -> None:
 
     calls: list[str | bytes] = []
 
-    def fake_request(method: str, url: str, **_: Any) -> Any:
+    def fake_request(method: str, url: str, **_: object) -> object:
         calls.append(ext.session.headers["User-Agent"])
 
         class R:
@@ -51,7 +50,7 @@ def test_user_agent_rotation(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_cookie_profile_loading(monkeypatch: pytest.MonkeyPatch) -> None:
     loaded: list[str] = []
 
-    def fake_load(self: Any, profile: str) -> list[dict[str, str]]:
+    def fake_load(self: object, profile: str) -> list[dict[str, str]]:
         loaded.append(profile)
         return [{"name": "sid", "value": "1", "domain": "example.com", "path": "/"}]
 

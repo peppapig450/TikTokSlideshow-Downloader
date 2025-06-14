@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Abstract base class for TikTok extractors."""
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any
@@ -14,7 +14,7 @@ from ..logger import get_logger
 logger = get_logger(__name__)
 
 
-class BaseExtractor(ABC):
+class BaseExtractor[T](ABC):
     """Base class for extractor implementations."""
 
     def __init__(
@@ -80,6 +80,6 @@ class BaseExtractor(ABC):
 
     # ------------------------------------------------------------------
     @abstractmethod
-    def extract(self, url: str) -> Any:
+    def extract(self, url: str) -> T:
         """Extract information from ``url``."""
         raise NotImplementedError
