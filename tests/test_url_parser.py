@@ -3,10 +3,10 @@ from pytest import MonkeyPatch
 
 from tiktok_downloader.url_parser import (
     TikTokURLInfo,
-    resolve_url,
-    extract_video_id,
     detect_content_type,
+    extract_video_id,
     parse_tiktok_url,
+    resolve_url,
 )
 
 
@@ -16,13 +16,15 @@ class DummyResponse:
 
 
 def test_resolve_url_follows_redirects(monkeypatch: MonkeyPatch) -> None:
+    timeout_value = 5
+
     def fake_get(url: str, *, allow_redirects: bool, timeout: int) -> DummyResponse:
         assert allow_redirects is True
-        assert timeout == 5
+        assert timeout == timeout_value
         return DummyResponse("https://resolved.example.com/video/123")
 
     monkeypatch.setattr("tiktok_downloader.url_parser.requests.get", fake_get)
-    resolved = resolve_url("https://short.example.com/abc", timeout=5)
+    resolved = resolve_url("https://short.example.com/abc", timeout=timeout_value)
     assert resolved == "https://resolved.example.com/video/123"
 
 
@@ -38,22 +40,18 @@ def test_extract_video_id_failure() -> None:
 
 def test_detect_content_type() -> None:
     assert detect_content_type("https://www.tiktok.com/@user/video/123") == "video"
-    assert (
-        detect_content_type("https://www.tiktok.com/@user/photo/123")
-        == "slideshow"
-    )
+    assert detect_content_type("https://www.tiktok.com/@user/photo/123") == "slideshow"
 
 
 def test_parse_tiktok_url_valid(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "tiktok_downloader.url_parser.resolve_url", lambda url: "https://www.tiktok.com/@user/video/1234567890123456789"
+        "tiktok_downloader.url_parser.resolve_url",
+        lambda url: "https://www.tiktok.com/@user/video/1234567890123456789",
     )
     monkeypatch.setattr(
         "tiktok_downloader.url_parser.extract_video_id", lambda url: "1234567890123456789"
     )
-    monkeypatch.setattr(
-        "tiktok_downloader.url_parser.detect_content_type", lambda url: "video"
-    )
+    monkeypatch.setattr("tiktok_downloader.url_parser.detect_content_type", lambda url: "video")
 
     info = parse_tiktok_url("https://vm.tiktok.com/short")
     assert info == TikTokURLInfo(
