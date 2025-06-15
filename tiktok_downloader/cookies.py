@@ -22,29 +22,32 @@ from .logger import get_logger
 logger = get_logger(__name__)
 
 
-class JSONCookie(TypedDict, total=False):
+class JSONCookie(TypedDict):
     """
     TypedDict for JSON-serializable cookies (often from browser extensions).
 
     Attributes:
-        name: The name of the cookie.
-        value: The value of the cookie.
-        domain: The domain for which the cookie is valid.
-        path: The URL path for which the cookie is valid.
-        secure: Whether the cookie is only sent over HTTPS.
-        httpOnly: Whether the cookie is inaccessible to JavaScript.
-        expirationDate: The UNIX timestamp when the cookie expires (common in JSON exports).
-        expires: Alias for expirationDate or primary key in Playwright.
+        name: The name of the cookie. (Required)
+        value: The value of the cookie. (Required)
+        domain: The domain for which the cookie is valid. (Required)
+        path: The URL path for which the cookie is valid. (Optional, defaults to "/")
+        secure: Whether the cookie is only sent over HTTPS. (Optional, defaults to False)
+        httpOnly: Whether the cookie is inaccessible to JavaScript. (Optional, defaults to False)
+        expirationDate: The UNIX timestamp when the cookie expires (Optional)
+        expires: Alias for expirationDate or primary key in Playwright. (Optional)
     """
 
-    name: str
-    value: str
-    domain: str
-    path: str
-    secure: bool
-    httpOnly: bool
-    expirationDate: float  # Often used in JSON exports like GetCookies.txt
-    expires: float  # Used by Playwright (-1 for session cookies)
+    # Fields essential to basic cookie functionality are marked Required
+    name: Required[str]
+    value: Required[str]
+    domain: Required[str]
+
+    # Mark non-essential fields NotRequired
+    path: NotRequired[str]
+    secure: NotRequired[bool]
+    httpOnly: NotRequired[bool]
+    expirationDate: NotRequired[float]  # Often used in JSON exports like GetCookies.txt
+    expires: NotRequired[float]  # Used by Playwright (-1 for session cookies)
 
 
 # Note: Playwright's Cookie type is also a TypedDict, similar to JSONCookie but
