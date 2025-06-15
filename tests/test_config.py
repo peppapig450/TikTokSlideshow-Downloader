@@ -101,9 +101,7 @@ def test_env_override_valid(monkeypatch: MonkeyPatch) -> None:
     assert cfg.get("log_level") is LogLevel.DEBUG
 
 
-def test_env_override_invalid(
-    monkeypatch: MonkeyPatch, caplog: LogCaptureFixture
-) -> None:
+def test_env_override_invalid(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     # invalid int for browser_timeout
     monkeypatch.setenv("TIKTOK_DOWNLOADER_BROWSER_TIMEOUT", "not_an_int")
     caplog.set_level("ERROR")

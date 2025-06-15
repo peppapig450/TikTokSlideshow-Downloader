@@ -45,9 +45,7 @@ def test_setup_creates_console_and_file_handlers(tmp_path: Path) -> None:
     assert len(handlers) == 2  # noqa: PLR2004
 
     console = next(h for h in handlers if isinstance(h, logging.StreamHandler))
-    file_h = next(
-        h for h in handlers if isinstance(h, logging.handlers.RotatingFileHandler)
-    )
+    file_h = next(h for h in handlers if isinstance(h, logging.handlers.RotatingFileHandler))
 
     assert console.level == logging.DEBUG
     assert file_h.level == logging.WARNING
@@ -63,9 +61,7 @@ def test_get_logger_returns_same_child_and_propagates(tmp_path: Path) -> None:
     b = get_logger("mypkg.module")
     c = get_logger("other")
 
-    assert (
-        a is b
-    ), "Repeated get_logger calls with the same name should return the same object"
+    assert a is b, "Repeated get_logger calls with the same name should return the same object"
     assert a is not c
     assert a.propagate is True, "Child loggers should propagate to the root handlers"
 
@@ -79,9 +75,7 @@ def test_set_debug_mode_toggles_console_handler_level(tmp_path: Path) -> None:
 
     root = logging.getLogger()
     console = next(
-        h
-        for h in root.handlers
-        if isinstance(h, logging.StreamHandler) and h.stream is sys.stdout
+        h for h in root.handlers if isinstance(h, logging.StreamHandler) and h.stream is sys.stdout
     )
 
     # Default was INFO
@@ -105,9 +99,7 @@ def test_singleton_init_only_once(tmp_path: Path) -> None:
 
     # Second setup with a different file
     log_2 = tmp_path / "two.log"
-    Logger.setup(
-        log_file=log_2, console_level=LogLevel.DEBUG, file_level=LogLevel.DEBUG
-    )
+    Logger.setup(log_file=log_2, console_level=LogLevel.DEBUG, file_level=LogLevel.DEBUG)
 
     # Handlers should not be duplicated
     assert root.handlers == initial_handlers, "Handlers should not be duplicated."

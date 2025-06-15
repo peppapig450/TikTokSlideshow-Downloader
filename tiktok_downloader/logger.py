@@ -187,10 +187,7 @@ class Logger:
         """
         root = logging.getLogger()
         for handler in root.handlers:
-            if (
-                isinstance(handler, logging.StreamHandler)
-                and handler.stream is sys.stdout
-            ):
+            if isinstance(handler, logging.StreamHandler) and handler.stream is sys.stdout:
                 handler.setLevel(logging.DEBUG if debug else logging.INFO)
                 break
 
