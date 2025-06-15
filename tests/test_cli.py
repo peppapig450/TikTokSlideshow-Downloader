@@ -306,3 +306,39 @@ def test_list_formats(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls["extract"] == 0
     assert "fmt1" in result.output
     assert "fmt2" in result.output
+
+
+def test_concurrency_option(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    info = TikTokURLInfo("https://x", "https://x", "123", "video")
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)
+
+    captured: dict[str, int] = {}
+
+    class DummyManager:
+        def __init__(
+            self,
+            *args: object,
+            concurrency: int = 3,
+            **kw: object,
+        ) -> None:
+            captured["concurrency"] = concurrency
+            self.concurrency = concurrency
+
+    class DummyExtractor:
+        def __init__(self, *args: object, **kw: object) -> None: ...
+
+        def extract(self, url: str, download: bool = False) -> object:
+            dest = tmp_path / "123.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager", DummyManager)
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["download", "https://x", "--output", str(tmp_path), "--concurrency", "5"],
+    )
+    assert result.exit_code == 0
+    assert captured["concurrency"] == 5  # noqa: PLR2004

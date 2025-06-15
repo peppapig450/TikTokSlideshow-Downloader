@@ -145,6 +145,13 @@ def auto_cookies(
     default=None,
     help="Video format preset such as best, worst, 720p, etc.",
 )
+@click.option(
+    "--concurrency",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Maximum concurrent downloads",
+)
 @click.option("--list-formats", is_flag=True, help="List available formats and exit")
 @click.pass_context
 def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
@@ -161,6 +168,7 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     log_level: str | None,
     user_agent: str | None,
     quality: str | None,
+    concurrency: int,
     list_formats: bool,
 ) -> None:
     """Download a TikTok video or slideshow.
@@ -234,7 +242,12 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
                 bars[dest] = bar
             bar.update(downloaded - bar.n)
 
-        manager = DownloadManager(cfg, progress=False, progress_callback=callback)
+        manager = DownloadManager(
+            cfg,
+            concurrency=concurrency,
+            progress=False,
+            progress_callback=callback,
+        )
 
         async def run_all(infos: Iterable[TikTokURLInfo]) -> None:
             sem = asyncio.Semaphore(manager.concurrency)

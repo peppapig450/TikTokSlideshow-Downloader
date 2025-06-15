@@ -10,6 +10,7 @@ tiktok-downloader download <url> [OPTIONS]
 ```
 
 Run ``tiktok-downloader download --help`` to see all configuration options.
+The ``--concurrency`` option controls how many downloads run in parallel.
 
 To export cookies saved in a JSON profile:
 
