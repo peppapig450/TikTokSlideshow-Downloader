@@ -1,6 +1,5 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Generator
 from pathlib import Path
-from typing import ClassVar
 
 import pytest
 from click.testing import CliRunner
@@ -35,7 +34,11 @@ def test_cli_updates_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
         "tiktok_downloader.cli.parse_tiktok_url",
         lambda url: TikTokURLInfo(url, url, "1234567890123456789", "video"),
     )
-    monkeypatch.setattr("tiktok_downloader.cli._stream_download", lambda u, d, c: None)
+
+    async def fake_download(self: object, url: str, dest: Path) -> None:
+        dest.touch()
+
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download", fake_download)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -105,22 +108,10 @@ def test_progress_bar_no_content_length(tmp_path: Path, monkeypatch: pytest.Monk
         lambda url: TikTokURLInfo(url, url, "123", "video"),
     )
 
-    class DummyResponse:
-        headers: ClassVar[dict[str, str]] = {}
+    async def fake_download(self: object, url: str, dest: Path) -> None:
+        dest.write_bytes(b"abcdef")
 
-        @staticmethod
-        def raise_for_status() -> None:
-            return None
-
-        @staticmethod
-        def iter_content(chunk_size: int = 1) -> Iterator[bytes]:
-            yield b"abc"
-            yield b"def"
-
-    monkeypatch.setattr(
-        "tiktok_downloader.cli.requests.get",
-        lambda url, stream=True: DummyResponse(),
-    )
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download", fake_download)
 
     runner = CliRunner()
     result = runner.invoke(

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
 import click
-import requests
-from tqdm import tqdm
 
 from . import (
     Config,
     CookieManager,
+    DownloadManager,
     LogLevel,
     PartialConfigDict,
     get_logger,
@@ -44,33 +44,6 @@ def _collect_config_updates(**options: Any) -> PartialConfigDict:
             cfg_key: ConfigKey = key
             updates[cfg_key] = value
     return updates
-
-
-def _stream_download(url: str, dest: Path, cfg: Config) -> None:
-    """Download a URL to ``dest`` showing a tqdm progress bar."""
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-
-    total = int(response.headers.get("content-length", 0))
-    chunk_size = cfg.get("chunk_size")
-
-    size_desc = tqdm.format_sizeof(total) if total else "unknown"
-
-    progress = tqdm(
-        total=total or None,
-        unit="B",
-        unit_scale=True,
-        desc=f"{dest.name} ({size_desc})",
-        leave=False,
-    )
-
-    with dest.open("wb") as file:
-        for chunk in response.iter_content(chunk_size=chunk_size):
-            if not chunk:
-                continue
-            file.write(chunk)
-            progress.update(len(chunk))
-    progress.close()
 
 
 @main.group()
@@ -149,11 +122,9 @@ def download(  # noqa: PLR0913
         output_dir = cfg.download_path
         output_dir.mkdir(parents=True, exist_ok=True)
         dest = output_dir / f"{info.video_id}.bin"
-        _stream_download(info.resolved_url, dest, cfg)
+        asyncio.run(DownloadManager(cfg).download(info.resolved_url, dest))
         click.echo(f"Saved to {dest}")
-    except requests.RequestException as exc:
-        raise click.ClickException(f"Network error: {exc}") from exc
-    except ValueError as exc:
-        raise click.ClickException(f"Invalid input: {exc}") from exc
     except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise click.ClickException(f"Invalid input: {exc}") from exc
         raise click.ClickException(str(exc)) from exc
