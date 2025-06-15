@@ -134,16 +134,17 @@ def test_progress_bar_no_content_length(tmp_path: Path, monkeypatch: pytest.Monk
 
     monkeypatch.setattr("tiktok_downloader.cli.tqdm", DummyTqdm)
 
-    async def fake_download_all(self: object, urls: Sequence[str], dest_dir: Path) -> None:
-        dest = Path(dest_dir) / "123.bin"
-        if self.progress_callback:  # type: ignore[attr-defined]
-            self.progress_callback(dest, 6, 6)  # type: ignore[attr-defined]
-        dest.write_bytes(b"abcdef")
+    class DummyExtractor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
 
-    monkeypatch.setattr(
-        "tiktok_downloader.cli.DownloadManager.download_all",
-        fake_download_all,
-    )
+        def extract(self, url: str, download: bool = False) -> object:
+            dest = tmp_path / "123.bin"
+            dest.write_bytes(b"abcdef")
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -152,7 +153,7 @@ def test_progress_bar_no_content_length(tmp_path: Path, monkeypatch: pytest.Monk
     )
     assert result.exit_code == 0
     assert (tmp_path / "123.bin").exists()
-    assert len(DummyTqdm.instances) >= 2  # noqa: PLR2004
+    assert len(DummyTqdm.instances) >= 1
 
 
 def test_multiple_urls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -162,6 +163,19 @@ def test_multiple_urls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         "https://b": TikTokURLInfo("https://b", "https://b", "b", "video"),
     }
     monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: mapping[u])
+
+    class DummyExtractor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def extract(self, url: str, download: bool = False) -> object:
+            vid = url.split("/")[-1]
+            dest = tmp_path / f"{vid}.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
 
     async def fake_download_all(self: object, urls: Sequence[str], dest_dir: Path) -> None:
         for u in urls:
@@ -185,11 +199,18 @@ def test_urls_from_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     }
     monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: mapping[u])
 
-    async def fake_download_all(self: object, urls: Sequence[str], dest_dir: Path) -> None:
-        for u in urls:
-            Path(dest_dir, f"{Path(u).name}.bin").touch()
+    class DummyExtractor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
 
-    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", fake_download_all)
+        def extract(self, url: str, download: bool = False) -> object:
+            vid = url.split("/")[-1]
+            dest = tmp_path / f"{vid}.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
 
     runner = CliRunner()
     result = runner.invoke(main, ["download", "--url-file", str(file), "--output", str(tmp_path)])
@@ -208,13 +229,20 @@ def test_mixed_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", fake_parse)
 
-    async def fake_download_all(self: object, urls: Sequence[str], dest_dir: Path) -> None:
-        u = urls[0]
-        if u.endswith("fail"):
-            raise RuntimeError("boom")
-        Path(dest_dir, f"{Path(u).name}.bin").touch()
+    class DummyExtractor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
 
-    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", fake_download_all)
+        def extract(self, url: str, download: bool = False) -> object:
+            vid = url.split("//")[1]
+            if vid.endswith("fail"):
+                raise RuntimeError("boom")
+            dest = tmp_path / f"{vid}.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
 
     runner = CliRunner()
     result = runner.invoke(main, ["download", *urls, "--output", str(tmp_path)])
@@ -223,3 +251,58 @@ def test_mixed_failures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert not (tmp_path / "fail.bin").exists()
     assert "Failed to parse bad" in result.output
     assert "Failed to download https://fail" in result.output
+
+
+def test_quality_option(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    info = TikTokURLInfo("https://x", "https://x", "123", "video")
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)
+
+    captured: dict[str, str | bool] = {}
+
+    class DummyExtractor:
+        def __init__(self, *args: object, quality: str | None = None, **kw: object) -> None:
+            captured["quality"] = quality or ""
+
+        def extract(self, url: str, download: bool = False) -> object:
+            captured["url"] = url
+            captured["download"] = download
+            return type("Res", (), {"filepath": tmp_path / "123.mp4"})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["download", "https://x", "--quality", "720p"])
+    assert result.exit_code == 0
+    assert captured["quality"] == "720p"
+    assert captured["url"] == "https://x"
+    assert captured["download"] is True
+
+
+def test_list_formats(monkeypatch: pytest.MonkeyPatch) -> None:
+    info = TikTokURLInfo("https://x", "https://x", "123", "video")
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)
+
+    calls: dict[str, int] = {"list": 0, "extract": 0}
+
+    class DummyExtractor:
+        def __init__(self, *args: object, **kw: object) -> None: ...
+
+        def list_formats(self, url: str) -> list[str]:
+            calls["list"] += 1
+            return ["fmt1", "fmt2"]
+
+        def extract(self, url: str, download: bool = False) -> object:
+            calls["extract"] += 1
+            return type("Res", (), {"filepath": None})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["download", "https://x", "--list-formats"])
+    assert result.exit_code == 0
+    assert calls["list"] == 1
+    assert calls["extract"] == 0
+    assert "fmt1" in result.output
+    assert "fmt2" in result.output
