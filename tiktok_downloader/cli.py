@@ -80,9 +80,14 @@ def export(profile: str, dest: Path) -> None:
     "--browser",
     type=click.Choice(["chromium", "firefox", "webkit"]),
     default="chromium",
+    help="Browser engine to use",
 )
-@click.option("--headless/--no-headless", default=False)
-@click.option("--user-data-dir", type=click.Path(path_type=Path))
+@click.option("--headless/--no-headless", default=False, help="Run the browser without UI")
+@click.option(
+    "--user-data-dir",
+    type=click.Path(path_type=Path),
+    help="Location of user data directory",
+)
 def login(
     profile: str,
     browser: str,
@@ -106,8 +111,9 @@ def login(
     "--browser",
     type=str,
     default="chromium",
+    help="Browser engine to use",
 )
-@click.option("--headless/--no-headless", default=True)
+@click.option("--headless/--no-headless", default=True, help="Run the browser without UI")
 def auto_cookies(
     profile: str,
     user_data_dir: str,
@@ -159,13 +165,17 @@ def verify(profile: str) -> None:
 )
 @click.option("--cookie-profile", "cookie_profile", help="Name of saved cookie profile")
 @click.option("--output", type=click.Path(path_type=Path), help="Output download directory")
-@click.option("--browser-timeout", type=int)
-@click.option("--headless/--no-headless", default=None)
-@click.option("--debug/--no-debug", default=None)
-@click.option("--max-retries", type=int)
-@click.option("--chunk-size", type=int)
-@click.option("--log-level", type=click.Choice([lvl.value for lvl in LogLevel]))
-@click.option("--user-agent", type=str)
+@click.option("--browser-timeout", type=int, help="Browser timeout in milliseconds")
+@click.option("--headless/--no-headless", default=None, help="Run the browser without UI")
+@click.option("--debug/--no-debug", default=None, help="Enable verbose debug logging")
+@click.option("--max-retries", type=int, help="Maximum download retries")
+@click.option("--chunk-size", type=int, help="Stream chunk size in bytes")
+@click.option(
+    "--log-level",
+    type=click.Choice([lvl.value for lvl in LogLevel]),
+    help="Set logging verbosity",
+)
+@click.option("--user-agent", type=str, help="HTTP user agent string")
 @click.option(
     "--quality",
     type=str,
