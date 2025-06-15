@@ -1,7 +1,7 @@
 [project]
 name = "tiktok-downloader"
-version = "0.1.0"
-description = ""
+version = "1.0.0"
+description = "CLI tool for downloading TikTok videos and slideshows"
 authors = [{ name = "peppapig450", email = "peppapig450@pm.me" }]
 requires-python = ">=3.11,<=3.13"
 readme = "README.md"
@@ -37,7 +37,14 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
-exclude = 'tiktokslideshow-download\.py$'
+exclude = [
+    "tests/",
+    "build/",
+    "dist/",
+    ".*venv/",
+    "__pycache__/",
+]
+
 
 [[tool.mypy.overrides]]
 module = ["yt_dlp.*", "bs4.*"]
@@ -51,7 +58,7 @@ output-format = "full"
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "SIM", "NPY", "RUF", "PL", "C", "W"]
 ignore = []
-exclude = [".git", ".ruff_cache", "__pycache__", "dist", "tiktokslideshow-download.py"]
+exclude = [".git", ".ruff_cache", ".*venv/", "__pycache__", "dist", "tiktokslideshow-download.py"]
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
