@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 import click
+from tqdm import tqdm
 
 from . import (
     Config,
@@ -14,6 +16,7 @@ from . import (
     DownloadManager,
     LogLevel,
     PartialConfigDict,
+    TikTokURLInfo,
     get_logger,
     parse_tiktok_url,
 )
@@ -66,7 +69,13 @@ def export(profile: str, dest: Path) -> None:
 
 
 @main.command()
-@click.argument("url")
+@click.argument("urls", nargs=-1)
+@click.option(
+    "--url-file",
+    "url_file",
+    type=click.Path(path_type=Path),
+    help="File with newline separated URLs",
+)
 @click.option("--cookie-profile", "cookie_profile", help="Name of saved cookie profile")
 @click.option("--output", type=click.Path(path_type=Path), help="Output download directory")
 @click.option("--browser-timeout", type=int)
@@ -77,9 +86,10 @@ def export(profile: str, dest: Path) -> None:
 @click.option("--log-level", type=click.Choice([lvl.value for lvl in LogLevel]))
 @click.option("--user-agent", type=str)
 @click.pass_context
-def download(  # noqa: PLR0913
+def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     ctx: click.Context,
-    url: str,
+    urls: tuple[str, ...],
+    url_file: Path | None,
     cookie_profile: str | None,
     output: Path | None,
     browser_timeout: int | None,
@@ -116,14 +126,70 @@ def download(  # noqa: PLR0913
             except Exception as exc:
                 logger.error("Failed to load cookies: %s", exc)
 
-        info = parse_tiktok_url(url)
-        logger.info("Parsed URL info: %s", info)
+        url_list: list[str] = list(urls)
+        if url_file:
+            for line in Path(url_file).read_text().splitlines():
+                clean = line.strip()
+                if clean and not clean.startswith("#"):
+                    url_list.append(clean)
+        if not url_list:
+            raise click.UsageError("No URLs provided")
+
+        infos: list[TikTokURLInfo] = []
+        for u in url_list:
+            try:
+                info = parse_tiktok_url(u)
+                infos.append(info)
+                logger.info("Parsed URL info: %s", info)
+            except Exception as exc:  # pragma: no cover - parse failure path
+                click.echo(f"Failed to parse {u}: {exc}")
+
+        if not infos:
+            raise click.ClickException("No valid URLs to download")
 
         output_dir = cfg.download_path
         output_dir.mkdir(parents=True, exist_ok=True)
-        dest = output_dir / f"{info.video_id}.bin"
-        asyncio.run(DownloadManager(cfg).download(info.resolved_url, dest))
-        click.echo(f"Saved to {dest}")
+
+        bars: dict[Path, tqdm] = {}
+        overall = tqdm(total=len(infos), desc="Overall", unit="url")
+
+        def callback(dest: Path, downloaded: int, total: int) -> None:
+            bar = bars.get(dest)
+            if not bar:
+                size_desc = tqdm.format_sizeof(total) if total else "unknown"
+                bar = tqdm(
+                    total=total or None,
+                    unit="B",
+                    unit_scale=True,
+                    desc=f"{dest.name} ({size_desc})",
+                    leave=False,
+                )
+                bars[dest] = bar
+            bar.update(downloaded - bar.n)
+
+        manager = DownloadManager(cfg, progress=False, progress_callback=callback)
+
+        async def run_all(infos: Iterable[TikTokURLInfo]) -> None:
+            sem = asyncio.Semaphore(manager.concurrency)
+
+            async def worker(info: TikTokURLInfo) -> None:
+                try:
+                    async with sem:
+                        await manager.download_all([info.resolved_url], output_dir)
+                    click.echo(f"Saved to {output_dir / (info.video_id + '.bin')}")
+                except Exception as exc:  # pragma: no cover - network error path
+                    click.echo(f"Failed to download {info.raw_url}: {exc}")
+                finally:
+                    overall.update(1)
+
+            async with asyncio.TaskGroup() as group:
+                for info in infos:
+                    group.create_task(worker(info))
+
+        asyncio.run(run_all(infos))
+        for bar in bars.values():
+            bar.close()
+        overall.close()
     except Exception as exc:
         if isinstance(exc, ValueError):
             raise click.ClickException(f"Invalid input: {exc}") from exc
