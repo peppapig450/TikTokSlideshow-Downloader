@@ -22,7 +22,12 @@ from . import (
     parse_tiktok_url,
 )
 from .config import ConfigKey, is_config_key
-from .cookies import _write_netscape, auto_fetch_cookies, fetch_cookies
+from .cookies import (
+    _write_netscape,
+    auto_fetch_cookies,
+    fetch_cookies,
+    verify_cookie_profile,
+)
 
 logger = get_logger(__name__)
 
@@ -118,6 +123,20 @@ def auto_cookies(
             )
         cookies = asyncio.run(auto_fetch_cookies(profile, user_data_dir, browser, headless))
         CookieManager().save(cookies, profile)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@cookies.command()
+@click.argument("profile")
+def verify(profile: str) -> None:
+    """Verify that saved cookies work for TikTok."""
+
+    try:
+        if verify_cookie_profile(profile):
+            click.echo(f"Cookie profile '{profile}' is valid.")
+        else:
+            raise click.ClickException(f"Cookie profile '{profile}' is invalid.")
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
