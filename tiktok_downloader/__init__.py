@@ -3,6 +3,7 @@
 from .config import Config, ConfigDict, PartialConfigDict, is_config_key
 from .cookies import CookieManager
 from .downloader import DownloadManager, run_download
+from .extractors import VideoExtractor
 from .extractors.base import BaseExtractor
 from .logger import Logger, LogLevel, get_logger
 from .url_parser import TikTokURLInfo, parse_tiktok_url
@@ -18,6 +19,7 @@ __all__ = [
     "Logger",
     "PartialConfigDict",
     "TikTokURLInfo",
+    "VideoExtractor",
     "build_dest_path",
     "get_logger",
     "is_config_key",

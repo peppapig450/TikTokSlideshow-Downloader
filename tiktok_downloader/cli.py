@@ -17,6 +17,7 @@ from . import (
     LogLevel,
     PartialConfigDict,
     TikTokURLInfo,
+    VideoExtractor,
     get_logger,
     parse_tiktok_url,
 )
@@ -85,6 +86,13 @@ def export(profile: str, dest: Path) -> None:
 @click.option("--chunk-size", type=int)
 @click.option("--log-level", type=click.Choice([lvl.value for lvl in LogLevel]))
 @click.option("--user-agent", type=str)
+@click.option(
+    "--quality",
+    type=str,
+    default=None,
+    help="Video format preset such as best, worst, 720p, etc.",
+)
+@click.option("--list-formats", is_flag=True, help="List available formats and exit")
 @click.pass_context
 def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     ctx: click.Context,
@@ -99,8 +107,14 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     chunk_size: int | None,
     log_level: str | None,
     user_agent: str | None,
+    quality: str | None,
+    list_formats: bool,
 ) -> None:
-    """Download a TikTok video or slideshow."""
+    """Download a TikTok video or slideshow.
+
+    Use ``--quality`` to specify formats like ``best``, ``worst``, ``720p`` and
+    ``--list-formats`` to show available options without downloading.
+    """
     cfg: Config = ctx.obj["config"]
 
     updates = _collect_config_updates(
@@ -175,8 +189,27 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
             async def worker(info: TikTokURLInfo) -> None:
                 try:
                     async with sem:
-                        await manager.download_all([info.resolved_url], output_dir)
-                    click.echo(f"Saved to {output_dir / (info.video_id + '.bin')}")
+                        if info.content_type == "video":
+                            extractor = VideoExtractor(
+                                cfg,
+                                cookie_profile=cookie_profile,
+                                quality=quality,
+                            )
+                            if list_formats:
+                                lines = await asyncio.to_thread(
+                                    extractor.list_formats, info.resolved_url
+                                )
+                                for line in lines:
+                                    click.echo(line)
+                                return
+                            result = await asyncio.to_thread(
+                                extractor.extract, info.resolved_url, download=True
+                            )
+                            dest = result.filepath or output_dir / (info.video_id + ".bin")
+                        else:
+                            await manager.download_all([info.resolved_url], output_dir)
+                            dest = output_dir / (info.video_id + ".bin")
+                        click.echo(f"Saved to {dest}")
                 except Exception as exc:  # pragma: no cover - network error path
                     click.echo(f"Failed to download {info.raw_url}: {exc}")
                 finally:

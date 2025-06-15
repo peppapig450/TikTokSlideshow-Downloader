@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import tempfile
+from contextlib import redirect_stdout
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TextIO, cast
@@ -103,3 +105,20 @@ class VideoExtractor(BaseExtractor[VideoResult]):
             tags=list(info.get("tags", []) or []),
             filepath=filepath,
         )
+
+    # ------------------------------------------------------------------
+    def list_formats(self, url: str) -> list[str]:
+        """Return available format strings for ``url``."""
+        opts: dict[str, Any] = {
+            "listformats": True,
+            "skip_download": True,
+            "quiet": True,
+        }
+        if self.cookie_file:
+            opts["cookiefile"] = str(self.cookie_file)
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            yt_dlp.YoutubeDL(opts).extract_info(url, download=False)
+        lines = [line.strip() for line in buffer.getvalue().splitlines() if line.strip()]
+        return lines
