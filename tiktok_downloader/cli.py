@@ -22,7 +22,7 @@ from . import (
     parse_tiktok_url,
 )
 from .config import ConfigKey, is_config_key
-from .cookies import _write_netscape, fetch_cookies
+from .cookies import _write_netscape, auto_fetch_cookies, fetch_cookies
 
 logger = get_logger(__name__)
 
@@ -88,6 +88,35 @@ def login(
 
     try:
         cookies = asyncio.run(fetch_cookies(profile, browser, headless, user_data_dir))
+        CookieManager().save(cookies, profile)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+# TODO: only support Chrome for now
+@cookies.command(name="auto")
+@click.argument("profile", default="Default", required=False)
+@click.argument("user_data_dir", default="detect", required=False)
+@click.option(
+    "--browser",
+    type=str,
+    default="chromium",
+)
+@click.option("--headless/--no-headless", default=True)
+def auto_cookies(
+    profile: str,
+    user_data_dir: str,
+    browser: str,
+    headless: bool,
+) -> None:
+    """Fetch cookies from an existing browser profile."""
+
+    try:
+        if browser.lower() != "chromium":
+            raise click.ClickException(
+                f"auto-fetch currently only supports Chromium; got `{browser}`."
+            )
+        cookies = asyncio.run(auto_fetch_cookies(profile, user_data_dir, browser, headless))
         CookieManager().save(cookies, profile)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc

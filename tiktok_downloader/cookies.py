@@ -9,12 +9,15 @@ supports both JSONCookie dictionaries and Playwright Cookie objects.
 from __future__ import annotations
 
 import json
+import shutil
+import sys
 from collections.abc import Iterable
 from os import PathLike
 from pathlib import Path
-from typing import Protocol, TextIO, TypedDict
+from typing import NotRequired, Protocol, Required, TextIO, TypedDict
 
 import platformdirs
+import requests
 from playwright.sync_api import Cookie as PlaywrightCookieType
 
 from .logger import get_logger
@@ -309,4 +312,175 @@ async def fetch_cookies(
         )
 
     logger.info("Fetched %d cookies", len(result))
+    return result
+
+
+def get_chrome_user_data_dir() -> Path | None:
+    """
+    Return the path to the Chrome/Chromium user-data directory for the current platform,
+    or None if it does't exist.
+    """
+    home = Path.home()
+
+    match sys.platform:
+        case _ if sys.platform.startswith("win"):
+            return home / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
+        case "darwin":
+            return home / "Library" / "Application Support" / "Google" / "Chrome"
+        case _:
+            for p in (
+                home / ".config" / "google-chrome",
+                home / ".config" / "chromium",
+            ):
+                if p.is_dir():
+                    return p
+            return None
+
+
+def list_chrome_profiles(user_data_dir: Path | None = None) -> dict[str, Path]:
+    """
+    Map profile-folder names → full paths by looking for “Cookies” files
+    under the base directory returned by get_chrome_user_data_dir().
+    """
+    base = user_data_dir or get_chrome_user_data_dir()
+    if base is None or not base.is_dir():
+        return {}
+
+    profiles = {
+        cookie_path.parent.name: cookie_path.parent
+        for cookie_path in base.glob("*/Cookies")
+        if cookie_path.parent.is_dir()
+    }
+    return profiles
+
+
+def get_chrome_executable_path() -> Path | None:
+    """Find a system-installed Chrome/Chromium executable."""
+
+    # Try common names on PATH first
+    for name in ("google-chrome", "chrome", "chromium", "chromium-browser"):
+        if path := shutil.which(name):
+            return Path(path)
+
+    # Platform-specific default locations
+    match sys.platform:
+        case platform if platform.startswith("win"):
+            candidates = [
+                "C:/Program Files/Google/Chrome/Application/chrome.exe",
+                "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+            ]
+        case "darwin":
+            candidates = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+        case _:  # Linux and others
+            candidates = [
+                "/usr/bin/google-chrome",
+                "/usr/bin/chromium",
+                "/usr/bin/chromium-browser",
+            ]
+
+    return next((Path(p) for p in candidates if Path(p).is_file()), None)
+
+
+def verify_cookie_profile(profile: str) -> bool:
+    """Verify that cookies stored under ``profile`` work for TikTok."""
+
+    mgr = CookieManager()
+    cookies = mgr.load(profile)
+
+    with requests.Session() as session:
+        for cookie in cookies:
+            session.cookies.set(
+                cookie["name"],
+                cookie["value"],
+                domain=cookie.get("domain", ""),
+                path=cookie.get("path", "/"),
+            )
+        response = session.get("https://www.tiktok.com/", timeout=10)
+    return response.ok
+
+
+async def auto_fetch_cookies(
+    profile: str,
+    user_data_dir: str,
+    browser: str,
+    headless: bool,
+) -> list[JSONCookie]:
+    """Extract cookies from an existing Chrome profile.
+
+    This function launches Chrome/Chromium using the specified profile and extracts
+    stored cookies for https://www.tiktok.com/. Requires system Chrome installation
+    for proper cookie extraction.
+
+    Args:
+        profile: Name of the Chrome profile to use.
+        user_data_dir: Path to Chrome user data directory, or "detect" to auto-detect.
+        browser: Browser type to use.
+        headless: Whether to run browser in headless mode.
+
+    Returns:
+        A list of JSONCookie dictionaries containing extracted cookies.
+
+    Raises:
+        RuntimeError: If the user data directory cannot be found, the specified
+            profile doesn't exist, or the profile is locked by a running Chrome instance.
+    """
+    if user_data_dir == "detect":
+        udd = get_chrome_user_data_dir()
+        if udd is None:
+            raise RuntimeError("Could not auto-detect Chrome user-data directory.")
+    else:
+        udd = Path(user_data_dir)
+        if not udd.is_dir():
+            raise RuntimeError(f"User-data dir {udd!r} does not exist or isn't a directory.")
+
+    profiles = list_chrome_profiles(udd)
+    if profile not in profiles:
+        raise RuntimeError(f"Profile {profile!r} not found under {udd}")
+
+    if executable := get_chrome_executable_path():
+        logger.info("Using Chrome executable at %s", executable)
+    else:
+        logger.error("System Chrome not found, required for cookie extraction")
+
+    from playwright.async_api import Error, async_playwright
+
+    try:
+        async with async_playwright() as pw:
+            launcher = getattr(pw, browser)
+            launch_args: dict[str, str | bool] = {"headless": headless}
+            if executable:
+                launch_args["executable_path"] = str(executable)
+
+            context = await launcher.launch_persistent_context(
+                str(profiles[profile]), **launch_args
+            )
+
+            page = await context.new_page()
+            await page.goto("https://www.tiktok.com/")
+            raw_cookies = await context.cookies()
+            await context.close()
+    except Error as exc:  # pragma: no cover - Playwright not available
+        msg = str(exc).lower()
+        if "another process" in msg or "lock" in msg:
+            raise RuntimeError(
+                "Chrome profile is locked. Close Chrome before extracting cookies."
+            ) from exc
+        raise
+
+    result: list[JSONCookie] = []
+    for cookie in raw_cookies:
+        expires = cookie.get("expires", 0)
+        result.append(
+            {
+                "name": cookie.get("name", ""),
+                "value": cookie.get("value", ""),
+                "domain": cookie.get("domain", ""),
+                "path": cookie.get("path", "/"),
+                "secure": bool(cookie.get("secure", False)),
+                "httpOnly": bool(cookie.get("httpOnly", False)),
+                "expirationDate": expires,
+                "expires": expires,
+            }
+        )
+
     return result
