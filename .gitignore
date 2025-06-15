@@ -175,3 +175,4 @@ playwright_chrome_profile/
 downloads/
 cookies.txt
 browser_profiles/
+.python-version
