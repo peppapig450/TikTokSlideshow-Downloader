@@ -22,7 +22,7 @@ from . import (
     parse_tiktok_url,
 )
 from .config import ConfigKey, is_config_key
-from .cookies import _write_netscape
+from .cookies import _write_netscape, fetch_cookies
 
 logger = get_logger(__name__)
 
@@ -65,6 +65,30 @@ def export(profile: str, dest: Path) -> None:
         with Path(dest).open("w", encoding="utf-8") as file:
             _write_netscape(cookies, file)
         logger.info("Exported %d cookies to %s", len(cookies), dest)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@cookies.command()
+@click.argument("profile")
+@click.option(
+    "--browser",
+    type=click.Choice(["chromium", "firefox", "webkit"]),
+    default="chromium",
+)
+@click.option("--headless/--no-headless", default=False)
+@click.option("--user-data-dir", type=click.Path(path_type=Path))
+def login(
+    profile: str,
+    browser: str,
+    headless: bool,
+    user_data_dir: Path | None,
+) -> None:
+    """Launch a browser for login and save the resulting cookies."""
+
+    try:
+        cookies = asyncio.run(fetch_cookies(profile, browser, headless, user_data_dir))
+        CookieManager().save(cookies, profile)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 

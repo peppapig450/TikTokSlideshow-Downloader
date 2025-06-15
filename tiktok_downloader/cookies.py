@@ -7,14 +7,15 @@ supports both JSONCookie dictionaries and Playwright Cookie objects.
 """
 
 from __future__ import annotations
+
 import json
-import os
-import tempfile
+from collections.abc import Iterable
 from os import PathLike
 from pathlib import Path
+from typing import Protocol, TextIO, TypedDict
+
 import platformdirs
 from playwright.sync_api import Cookie as PlaywrightCookieType
-from typing import TypedDict, Protocol, Iterable, TextIO
 
 from .logger import get_logger
 
@@ -96,15 +97,11 @@ def _parse_expires(raw_exp: int | float | str | None = None) -> int:
         return int(float(raw_exp))
     except (ValueError, TypeError):
         # Return 0 for non-numeric strings, incompatible types
-        logger.debug(
-            "Could not parse expires value '%s' to int, defaulting to 0.", raw_exp
-        )
+        logger.debug("Could not parse expires value '%s' to int, defaulting to 0.", raw_exp)
         return 0
 
 
-def _write_netscape(
-    cookies: Iterable[JSONCookie | PlaywrightCookieType], file: TextIO
-) -> None:
+def _write_netscape(cookies: Iterable[JSONCookie | PlaywrightCookieType], file: TextIO) -> None:
     """
     Write cookies in Netscape HTTP Cookie File format to an open file.
 
@@ -255,3 +252,58 @@ class CookieManager:
         except Exception:
             logger.exception("Failed to save cookies")
             raise
+
+
+async def fetch_cookies(
+    profile: str,
+    browser: str = "chromium",
+    headless: bool = False,
+    user_data_dir: Path | None = None,
+) -> list[JSONCookie]:
+    """Launch a browser, let the user log in, and return collected cookies."""
+
+    import asyncio
+
+    from playwright.async_api import async_playwright
+
+    logger.info("Launching %s for profile '%s'", browser, profile)
+
+    async with async_playwright() as pw:
+        browser_type = getattr(pw, browser)
+
+        if user_data_dir is not None:
+            context = await browser_type.launch_persistent_context(
+                str(user_data_dir), headless=headless
+            )
+            b = None
+        else:
+            b = await browser_type.launch(headless=headless)
+            context = await b.new_context()
+
+        page = await context.new_page()
+        await page.goto("https://www.tiktok.com/")
+        await asyncio.to_thread(input, "Press Enter once logged in")
+        cookies = await context.cookies()
+
+        await context.close()
+        if b is not None:
+            await b.close()
+
+    result: list[JSONCookie] = []
+    for cookie in cookies:
+        expires = cookie.get("expires", 0)
+        result.append(
+            {
+                "name": cookie.get("name", ""),
+                "value": cookie.get("value", ""),
+                "domain": cookie.get("domain", ""),
+                "path": cookie.get("path", "/"),
+                "secure": bool(cookie.get("secure", False)),
+                "httpOnly": bool(cookie.get("httpOnly", False)),
+                "expirationDate": expires,
+                "expires": expires,
+            }
+        )
+
+    logger.info("Fetched %d cookies", len(result))
+    return result

@@ -17,6 +17,16 @@ To export cookies saved in a JSON profile:
 tiktok-downloader cookies export <profile> <destination>
 ```
 
+To create a new cookie profile via a logged-in browser session:
+
+```bash
+tiktok-downloader cookies login <profile> [--browser chromium|firefox|webkit] \
+    [--headless] [--user-data-dir DIR]
+```
+
+Run the command, log into TikTok in the opened browser window and press Enter
+when ready. The cookies will be saved under ``<profile>.json`` for reuse.
+
 ## Module entry point
 
 Run the CLI with:
