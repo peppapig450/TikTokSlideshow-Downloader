@@ -127,6 +127,14 @@ def auto_cookies(
         raise click.ClickException(str(exc)) from exc
 
 
+@cookies.command(name="list")
+def list_profiles() -> None:
+    """Print available cookie profiles."""
+    profiles = CookieManager().list_profiles()
+    for prof in profiles:
+        click.echo(prof)
+
+
 @cookies.command()
 @click.argument("profile")
 def verify(profile: str) -> None:

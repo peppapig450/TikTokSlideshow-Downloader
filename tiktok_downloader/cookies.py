@@ -259,6 +259,14 @@ class CookieManager:
             logger.exception("Failed to save cookies")
             raise
 
+    def list_profiles(self) -> list[str]:
+        """Return available cookie profile names without the ``.json`` extension."""
+        profiles = []
+        for path in sorted(self.storage_dir.glob("*.json")):
+            if path.is_file():
+                profiles.append(path.stem)
+        return profiles
+
 
 async def fetch_cookies(
     profile: str,

@@ -35,6 +35,12 @@ tiktok-downloader cookies auto <profile> <user-data-dir> [--browser chromium|fir
     [--headless/--no-headless]
 ```
 
+To view available cookie profiles:
+
+```bash
+tiktok-downloader cookies list
+```
+
 To verify that a saved cookie profile is still valid:
 
 ```bash

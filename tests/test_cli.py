@@ -108,6 +108,19 @@ def test_cookies_export(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert "# Netscape HTTP Cookie File" in dest.read_text()
 
 
+def test_cookies_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "tiktok_downloader.cli.CookieManager.list_profiles",
+        lambda self: ["prof1", "prof2"],
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["cookies", "list"])
+    assert result.exit_code == 0
+    assert "prof1" in result.output
+    assert "prof2" in result.output
+
+
 def test_progress_bar_no_content_length(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "tiktok_downloader.cli.parse_tiktok_url",
