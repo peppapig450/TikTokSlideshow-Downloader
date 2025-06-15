@@ -67,7 +67,7 @@ def validate_download_path(path: Any) -> None:
         raise ValueError("'download_path' must be a non-empty path")
 
     if isinstance(path, Path) and not path.exists():
-        logger.warning("'download_path' does not exist and will be created if needed.")
+        logger.debug("'download_path' does not exist and will be created if needed.")
 
 
 def validate_browser_timeout(timeout: Any) -> None:
@@ -112,7 +112,7 @@ class Config:
         "download_path": Path("downloads"),
         "browser_timeout": 30_000,  # milliseconds
         "headless": True,
-        "debug": True,
+        "debug": False,
         "max_retries": 3,
         "chunk_size": 8192,
         "log_level": LogLevel.INFO,
@@ -217,13 +217,9 @@ class Config:
 
             try:
                 self._config[raw_key] = parser(raw)
-                logger.debug(
-                    "Loaded %r from %r: %r", raw_key, env_key, self._config[raw_key]
-                )
+                logger.debug("Loaded %r from %r: %r", raw_key, env_key, self._config[raw_key])
             except Exception as e:
-                logger.error(
-                    "Failed to parse %r=%r for %r: %s", env_key, raw, raw_key, e
-                )
+                logger.error("Failed to parse %r=%r for %r: %s", env_key, raw, raw_key, e)
 
     def _setup_logging(self) -> None:
         """Configure logging based on config settings."""

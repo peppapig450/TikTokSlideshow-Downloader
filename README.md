@@ -56,3 +56,5 @@ python -m tiktok_downloader download <url> [OPTIONS]
 ```
 
 This entry point loads your configuration and handles Ctrl+C gracefully.
+
+Debug logging is disabled by default. Use `--debug` or set `TIKTOK_DOWNLOADER_DEBUG=true` to enable verbose output.
