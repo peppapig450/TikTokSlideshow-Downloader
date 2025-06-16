@@ -25,8 +25,6 @@ from .config import ConfigKey, is_config_key
 from .cookies import (
     JSONCookie,
     _write_netscape,
-    auto_fetch_cookies,
-    fetch_cookies,
     verify_cookie_profile,
 )
 from .extractors import SlideshowExtractor
@@ -62,7 +60,7 @@ def cookies() -> None:
     """Cookie management commands."""
 
 
-@cookies.command()
+@cookies.command(hidden=True)
 @click.argument("profile")
 @click.argument("dest", type=click.Path(path_type=Path))
 def export(profile: str, dest: Path) -> None:
@@ -98,15 +96,11 @@ def login(
 ) -> None:
     """Launch a browser for login and save the resulting cookies."""
 
-    try:
-        cookies = asyncio.run(fetch_cookies(profile, browser, headless, user_data_dir))
-        CookieManager().save(cookies, profile)
-    except Exception as exc:
-        raise click.ClickException(str(exc)) from exc
+    raise click.ClickException("Cookie login is temporarily disabled")
 
 
 # TODO: only support Chrome for now
-@cookies.command(name="auto")
+@cookies.command(name="auto", hidden=True)
 @click.argument("profile", default="Default", required=False)
 @click.argument("user_data_dir", default="detect", required=False)
 @click.option(
@@ -124,15 +118,7 @@ def auto_cookies(
 ) -> None:
     """Fetch cookies from an existing browser profile."""
 
-    try:
-        if browser.lower() != "chromium":
-            raise click.ClickException(
-                f"auto-fetch currently only supports Chromium; got `{browser}`."
-            )
-        cookies = asyncio.run(auto_fetch_cookies(profile, user_data_dir, browser, headless))
-        CookieManager().save(cookies, profile)
-    except Exception as exc:
-        raise click.ClickException(str(exc)) from exc
+    raise click.ClickException("Cookie login is temporarily disabled")
 
 
 @cookies.command(name="list")

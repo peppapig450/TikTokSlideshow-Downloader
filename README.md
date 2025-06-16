@@ -31,6 +31,10 @@ tiktok-downloader cookies login <profile> [--browser chromium|firefox|webkit] \
 Run the command, log into TikTok in the opened browser window and press Enter
 when ready. The cookies will be saved under ``<profile>.json`` for reuse.
 
+**Note:** The ``cookies login`` and ``cookies auto`` commands are currently
+disabled while the browser automation is being updated. See the issue tracker
+for progress.
+
 To fetch cookies directly from an existing Chrome/Chromium profile:
 
 ```bash

@@ -83,33 +83,11 @@ async def test_auto_fetch_cookies(monkeypatch: pytest.MonkeyPatch, tmp_path: str
 
 
 def test_cli_auto(monkeypatch: pytest.MonkeyPatch, tmp_path: str) -> None:
-    captured: dict[str, Any] = {}
+    def fail(*_: Any, **__: Any) -> None:
+        raise AssertionError("should not be called")
 
-    async def fake_auto(
-        profile: str, user_data_dir: str, browser: str, headless: bool
-    ) -> list[dict[str, Any]]:
-        captured["args"] = (profile, user_data_dir, browser, headless)
-        return [
-            {
-                "name": "sid",
-                "value": "1",
-                "domain": "x",
-                "path": "/",
-                "secure": False,
-                "httpOnly": False,
-                "expirationDate": 0,
-                "expires": 0,
-            }
-        ]
-
-    saved: dict[str, Any] = {}
-
-    def fake_save(self: object, cookies: list[dict[str, Any]], profile: str) -> None:
-        saved["cookies"] = cookies
-        saved["profile"] = profile
-
-    monkeypatch.setattr("tiktok_downloader.cli.auto_fetch_cookies", fake_auto)
-    monkeypatch.setattr("tiktok_downloader.cli.CookieManager.save", fake_save)
+    monkeypatch.setattr("tiktok_downloader.cli.auto_fetch_cookies", fail, raising=False)
+    monkeypatch.setattr("tiktok_downloader.cli.CookieManager.save", fail, raising=False)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -120,13 +98,10 @@ def test_cli_auto(monkeypatch: pytest.MonkeyPatch, tmp_path: str) -> None:
             "myprof",
             str(tmp_path),
             "--browser",
-            # "webkit", #XXX: chromium is the only one supported
             "chromium",
             "--no-headless",
         ],
     )
 
-    assert result.exit_code == 0
-    assert captured["args"] == ("myprof", str(tmp_path), "chromium", False)
-    assert saved["profile"] == "myprof"
-    assert saved["cookies"][0]["name"] == "sid"
+    assert result.exit_code == 1
+    assert "Cookie login is temporarily disabled" in result.output

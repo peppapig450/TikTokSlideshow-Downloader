@@ -108,33 +108,11 @@ async def test_fetch_cookies_headless(monkeypatch: pytest.MonkeyPatch, tmp_path:
 
 
 def test_cli_login(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    captured: dict[str, Any] = {}
+    def fail(*_: Any, **__: Any) -> None:
+        raise AssertionError("should not be called")
 
-    async def fake_fetch(
-        profile: str, browser: str, headless: bool, user_data_dir: Path | None
-    ) -> list[dict[str, Any]]:
-        captured["args"] = (profile, browser, headless, user_data_dir)
-        return [
-            {
-                "name": "sid",
-                "value": "1",
-                "domain": "x",
-                "path": "/",
-                "secure": False,
-                "httpOnly": False,
-                "expirationDate": 0,
-                "expires": 0,
-            }
-        ]
-
-    saved: dict[str, Any] = {}
-
-    def fake_save(self: object, cookies: list[dict[str, Any]], profile: str) -> None:
-        saved["cookies"] = cookies
-        saved["profile"] = profile
-
-    monkeypatch.setattr("tiktok_downloader.cli.fetch_cookies", fake_fetch)
-    monkeypatch.setattr("tiktok_downloader.cli.CookieManager.save", fake_save)
+    monkeypatch.setattr("tiktok_downloader.cli.fetch_cookies", fail, raising=False)
+    monkeypatch.setattr("tiktok_downloader.cli.CookieManager.save", fail, raising=False)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -151,7 +129,5 @@ def test_cli_login(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         ],
     )
 
-    assert result.exit_code == 0
-    assert captured["args"] == ("myprof", "firefox", True, tmp_path)
-    assert saved["profile"] == "myprof"
-    assert saved["cookies"][0]["name"] == "sid"
+    assert result.exit_code == 1
+    assert "Cookie login is temporarily disabled" in result.output
