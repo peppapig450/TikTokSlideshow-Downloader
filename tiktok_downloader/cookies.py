@@ -158,15 +158,16 @@ def _write_netscape(cookies: Iterable[JSONCookie | PlaywrightCookieType], file: 
 
                 # Process and Format data
                 expires_timestamp = _parse_expires(value_to_parse)
-                # Netscape host-only flag: TRUE if domain doesn't start with '.', FALSE if it does
-                # A leading dot means it's valid for subdomains.
-                host_only_flag = "FALSE" if domain.startswith(".") else "TRUE"
+                # Netscape domain flag: TRUE if domain string starts with '.' else FALSE
+                # http.cookiejar expects this to match whether the cookie domain
+                # was explicitly specified with a leading dot.
+                domain_flag = "TRUE" if domain.startswith(".") else "FALSE"
                 secure_flag = "TRUE" if secure else "FALSE"
 
                 # Write the formatted line
-                # Format: domain<TAB>hostOnlyFlag<TAB>path<TAB>secureFlag<TAB>expires<TAB>name<TAB>value  # noqa: E501
+                # Format: domain<TAB>domainFlag<TAB>path<TAB>secureFlag<TAB>expires<TAB>name<TAB>value  # noqa: E501
                 file.write(
-                    f"{domain}\t{host_only_flag}\t{path}\t{secure_flag}\t"
+                    f"{domain}\t{domain_flag}\t{path}\t{secure_flag}\t"
                     f"{expires_timestamp}\t{name}\t{value}\n"
                 )
             except Exception as e:
