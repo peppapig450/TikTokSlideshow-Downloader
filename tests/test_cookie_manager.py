@@ -52,6 +52,63 @@ def test_write_netscape_skips_invalid(tmp_path: Path, caplog: pytest.LogCaptureF
     assert "Skipping cookie #2" in caplog.text
 
 
+def test_load_returns_data(tmp_path: Path) -> None:
+    cookies = [
+        {
+            "name": "sid",
+            "value": "1",
+            "domain": "example.com",
+            "path": "/",
+            "secure": False,
+            "httpOnly": False,
+            "expirationDate": 0,
+            "expires": 0,
+        }
+    ]
+    (tmp_path / "prof.json").write_text(json.dumps(cookies))
+
+    mgr = CookieManager(tmp_path)
+    loaded = mgr.load("prof")
+
+    assert loaded == cookies
+
+
+def test_save_writes_file(tmp_path: Path) -> None:
+    cookies = [
+        {
+            "name": "sid",
+            "value": "1",
+            "domain": "example.com",
+            "path": "/",
+            "secure": False,
+            "httpOnly": False,
+            "expirationDate": 0,
+            "expires": 0,
+        }
+    ]
+
+    mgr = CookieManager(tmp_path)
+    path = mgr.save(cookies, "prof")
+
+    assert path == tmp_path / "prof.json"
+    assert path.is_file()
+    assert json.loads(path.read_text()) == cookies
+
+
+def test_load_nonexistent_file(tmp_path: Path) -> None:
+    mgr = CookieManager(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        mgr.load("missing")
+
+
+def test_load_invalid_json(tmp_path: Path) -> None:
+    (tmp_path / "bad.json").write_text("{not json}")
+
+    mgr = CookieManager(tmp_path)
+    with pytest.raises(ValueError):
+        mgr.load("bad")
+
+
 def test_load_json_file(tmp_path: Path) -> None:
     from tiktok_downloader.cookies import load_json_file
 
