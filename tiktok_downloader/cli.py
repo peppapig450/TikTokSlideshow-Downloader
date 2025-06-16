@@ -271,7 +271,7 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
 
         def callback(dest: Path, downloaded: int, total: int) -> None:
             bar = bars.get(dest)
-            if not bar:
+            if bar is None:
                 size_desc = tqdm.format_sizeof(total) if total else "unknown"
                 bar = tqdm(
                     total=total or None,

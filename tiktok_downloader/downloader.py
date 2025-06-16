@@ -78,11 +78,11 @@ class DownloadManager:
                 file.write(chunk)
                 checksum.update(chunk)
                 downloaded += len(chunk)
-                if progress:
+                if progress is not None:
                     progress.update(len(chunk))
                 if self.progress_callback:
                     self.progress_callback(dest, downloaded, total)
-        if progress:
+        if progress is not None:
             progress.close()
         return checksum.hexdigest()
 
