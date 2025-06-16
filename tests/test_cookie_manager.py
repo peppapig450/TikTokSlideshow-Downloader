@@ -146,3 +146,49 @@ def test_load_netscape_file(tmp_path: Path) -> None:
     cookies = load_netscape_file(file)
     assert cookies[0]["name"] == "sid"
     assert cookies[0]["domain"] == "example.com"
+
+
+def test_load_json_file_requires_list(tmp_path: Path) -> None:
+    from tiktok_downloader.cookies import load_json_file
+
+    file = tmp_path / "bad.json"
+    file.write_text(json.dumps({"name": "sid"}))
+
+    with pytest.raises(ValueError):
+        load_json_file(file)
+
+
+def test_load_json_file_skips_invalid_entries(tmp_path: Path) -> None:
+    from tiktok_downloader.cookies import load_json_file
+
+    data = [
+        "not a cookie",
+        {
+            "name": "sid",
+            "value": "1",
+            "domain": "example.com",
+            "path": "/",
+            "secure": True,
+            "httpOnly": True,
+            "expirationDate": "123",
+        },
+    ]
+    file = tmp_path / "c.json"
+    file.write_text(json.dumps(data))
+
+    cookies = load_json_file(file)
+
+    assert cookies == [
+        {
+            "name": "sid",
+            "value": "1",
+            "domain": "example.com",
+            "path": "/",
+            "secure": True,
+            "httpOnly": True,
+            "expirationDate": 123,
+            "expires": 123,
+        }
+    ]
+    assert isinstance(cookies[0]["expirationDate"], int)
+    assert isinstance(cookies[0]["expires"], int)
