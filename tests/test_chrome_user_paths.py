@@ -55,3 +55,20 @@ def test_executable_path_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(Path, "is_file", fake_is_file)
     assert get_chrome_executable_path() == Path("/usr/bin/chromium")
+
+
+def test_executable_path_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    monkeypatch.setattr(sys, "platform", "win32", raising=False)
+
+    paths = []
+
+    def fake_is_file(self: Path) -> bool:
+        paths.append(str(self))
+        return str(self) == "C:/Program Files/Google/Chrome/Application/chrome.exe"
+
+    monkeypatch.setattr(Path, "is_file", fake_is_file)
+    assert get_chrome_executable_path() == Path(
+        "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    )
+    assert any(p.startswith("C:/Program Files") for p in paths)
