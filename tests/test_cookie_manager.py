@@ -52,6 +52,21 @@ def test_write_netscape_skips_invalid(tmp_path: Path, caplog: pytest.LogCaptureF
     assert "Skipping cookie #2" in caplog.text
 
 
+def test_write_netscape_none_domain(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    cookies = [{"name": "bad", "value": "x", "domain": None, "path": "/"}]
+    dest = tmp_path / "none.txt"
+    with dest.open("w", encoding="utf-8") as fh:
+        from tiktok_downloader.cookies import _write_netscape
+
+        caplog.set_level("WARNING")
+        _write_netscape(cookies, fh)
+
+    lines = dest.read_text().splitlines()
+    cookie_lines = [line for line in lines if line and not line.startswith("#")]
+    assert cookie_lines == []
+    assert "Skipping cookie #0" in caplog.text
+
+
 def test_load_returns_data(tmp_path: Path) -> None:
     cookies = [
         {
