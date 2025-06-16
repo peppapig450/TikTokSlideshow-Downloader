@@ -4,11 +4,14 @@ import hashlib
 from pathlib import Path
 
 from tiktok_downloader.utils import (
+    build_dest_path,
     checksum,
     cleanup_temp_files,
     ensure_directory,
     is_duplicate,
     safe_filename,
+    sanitize_filename,
+    unique_path,
 )
 
 
@@ -53,3 +56,22 @@ def test_cleanup_temp_files(tmp_path: Path) -> None:
     assert not tmp.exists()
     assert not nested.exists()
     assert keep.exists()
+
+
+def test_unique_path(tmp_path: Path) -> None:
+    existing = tmp_path / "file.txt"
+    existing.write_text("1")
+
+    result = unique_path(existing)
+
+    assert result == tmp_path / "file_1.txt"
+
+
+def test_build_dest_path_sanitizes_and_uniques(tmp_path: Path) -> None:
+    name = "a/b:c?"
+    sanitized = sanitize_filename(name)
+    (tmp_path / f"{sanitized}.bin").touch()
+
+    result = build_dest_path(tmp_path, name, "bin")
+
+    assert result == tmp_path / f"{sanitized}_1.bin"
