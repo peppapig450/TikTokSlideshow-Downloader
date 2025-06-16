@@ -1,13 +1,13 @@
 name: Linting and Testing
 
 on:
-  push:
   pull_request:
+    types: [opened, synchronize]
   workflow_dispatch:
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
