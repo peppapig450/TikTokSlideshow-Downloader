@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from tiktok_downloader.cookies import CookieManager
 
 
@@ -28,6 +30,26 @@ def test_write_netscape_domain_flags(tmp_path: Path) -> None:
     lines = dest.read_text().splitlines()
     assert ".tiktok.com\tTRUE\t/\tTRUE\t0\tc1\tv1" in lines
     assert "example.com\tFALSE\t/\tFALSE\t0\tc2\tv2" in lines
+
+
+def test_write_netscape_skips_invalid(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    cookies = [
+        {"name": "good", "value": "val", "domain": ".domain.com", "path": "/"},
+        {"name": "bad_no_domain", "value": "x", "path": "/"},
+        {"value": "x", "domain": ".domain.com", "path": "/"},
+    ]
+    dest = tmp_path / "out.txt"
+    with dest.open("w", encoding="utf-8") as fh:
+        from tiktok_downloader.cookies import _write_netscape
+
+        caplog.set_level("WARNING")
+        _write_netscape(cookies, fh)
+
+    lines = dest.read_text().splitlines()
+    cookie_lines = [line for line in lines if line and not line.startswith("#")]
+    assert cookie_lines == [".domain.com\tTRUE\t/\tFALSE\t0\tgood\tval"]
+    assert "Skipping cookie #1" in caplog.text
+    assert "Skipping cookie #2" in caplog.text
 
 
 def test_load_json_file(tmp_path: Path) -> None:
