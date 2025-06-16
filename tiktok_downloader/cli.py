@@ -28,6 +28,7 @@ from .cookies import (
     fetch_cookies,
     verify_cookie_profile,
 )
+from .extractors import SlideshowExtractor
 
 logger = get_logger(__name__)
 
@@ -313,10 +314,16 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
                                 extractor.extract, info.resolved_url, download=True
                             )
                             dest = result.filepath or output_dir / (info.video_id + ".bin")
+                            click.echo(f"Saved to {dest}")
                         else:
-                            await manager.download_all([info.resolved_url], output_dir)
-                            dest = output_dir / (info.video_id + ".bin")
-                        click.echo(f"Saved to {dest}")
+                            slide_ext = SlideshowExtractor(
+                                cfg,
+                                cookie_profile=cookie_profile,
+                            )
+                            slide_res = await slide_ext.extract(info.resolved_url)
+                            dest_dir = output_dir / info.video_id
+                            await manager.download_all(slide_res.urls, dest_dir)
+                            click.echo(f"Saved to {dest_dir}")
                 except Exception as exc:  # pragma: no cover - network error path
                     click.echo(f"Failed to download {info.raw_url}: {exc}")
                 finally:

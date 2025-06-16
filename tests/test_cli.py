@@ -355,3 +355,59 @@ def test_concurrency_option(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     )
     assert result.exit_code == 0
     assert captured["concurrency"] == 5  # noqa: PLR2004
+
+
+def test_slideshow_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    mapping = {
+        "https://slide": TikTokURLInfo("https://slide", "https://slide", "s123", "slideshow"),
+        "https://video": TikTokURLInfo("https://video", "https://video", "v123", "video"),
+    }
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: mapping[u])
+
+    captured: dict[str, object] = {}
+
+    class DummySlideExtractor:
+        def __init__(self, *args: object, cookie_profile: str | None = None, **kw: object) -> None:
+            captured["slide_cookie"] = cookie_profile
+
+        async def extract(self, url: str) -> object:
+            captured["slide_url"] = url
+            return type("Res", (), {"urls": ["img1", "img2"]})()
+
+    class DummyVideoExtractor:
+        def __init__(self, *args: object, cookie_profile: str | None = None, **kw: object) -> None:
+            captured["video_cookie"] = cookie_profile
+
+        def extract(self, url: str, download: bool = False) -> object:
+            dest = tmp_path / "v123.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    downloaded: list[tuple[list[str], Path]] = []
+
+    async def fake_download_all(self: object, urls: Sequence[str], dest_dir: Path) -> None:
+        downloaded.append((list(urls), dest_dir))
+
+    monkeypatch.setattr("tiktok_downloader.cli.SlideshowExtractor", DummySlideExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyVideoExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", fake_download_all)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "download",
+            "https://slide",
+            "https://video",
+            "--output",
+            str(tmp_path),
+            "--cookie-profile",
+            "prof",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured["slide_cookie"] == "prof"
+    assert captured["slide_url"] == "https://slide"
+    assert downloaded == [(["img1", "img2"], tmp_path / "s123")]
+    assert captured["video_cookie"] == "prof"
+    assert (tmp_path / "v123.bin").exists()
