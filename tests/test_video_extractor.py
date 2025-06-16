@@ -92,3 +92,35 @@ def test_quality_and_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     assert result.thumbnail_url == "thumb.jpg"
     assert result.description == "desc"
     assert result.tags == ["t1", "t2"]
+
+
+def test_extract_bad_info(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class DummyYDL:
+        def __init__(self, opts: dict[str, Any]) -> None:
+            captured.update(opts)
+
+        def extract_info(self, url: str, download: bool = False) -> object:
+            return "not-a-dict"
+
+    monkeypatch.setattr(video_mod.yt_dlp, "YoutubeDL", DummyYDL)
+    ext = VideoExtractor()
+    with pytest.raises(RuntimeError):
+        ext.extract("https://tiktok.com/vid")
+
+
+def test_list_formats(monkeypatch: pytest.MonkeyPatch) -> None:
+    output_lines = ["fmt line 1", "fmt line 2"]
+
+    class DummyYDL:
+        def __init__(self, opts: dict[str, Any]) -> None:
+            pass
+
+        def extract_info(self, url: str, download: bool = False) -> None:
+            print("\n".join(output_lines))
+
+    monkeypatch.setattr(video_mod.yt_dlp, "YoutubeDL", DummyYDL)
+    ext = VideoExtractor()
+    result = ext.list_formats("https://x")
+    assert result == output_lines
