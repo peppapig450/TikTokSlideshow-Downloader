@@ -68,7 +68,7 @@ class VideoExtractor(BaseExtractor[VideoResult]):
             "quiet": True,
         }
         if self.cookie_file:
-            opts["cookiefile"] = str(self.cookie_file)
+            opts["cookies"] = str(self.cookie_file)
 
         try:
             info_raw = yt_dlp.YoutubeDL(opts).extract_info(url, download=download)
@@ -115,7 +115,7 @@ class VideoExtractor(BaseExtractor[VideoResult]):
             "quiet": True,
         }
         if self.cookie_file:
-            opts["cookiefile"] = str(self.cookie_file)
+            opts["cookies"] = str(self.cookie_file)
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
