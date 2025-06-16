@@ -77,7 +77,8 @@ dev = [
     "ruff>=0.11.6,<0.12",
     "types-requests>=2.32.0.20250328",
     "types-tqdm>=4.67.0.20250417",
-    "pre-commit>=4.2.0,<5"
+    "pre-commit>=4.2.0,<5",
+    "pytest-cov>=6.2.1",
 ]
 
 [tool.ruff.lint.isort]
@@ -85,3 +86,31 @@ known-first-party = ["tiktok_downloader"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.coverage.run]
+source_pkgs = ["tiktok_downloader"]
+branch = true
+parallel = true
+omit = [
+    "tiktok_downloader/__main__.py",
+    "*/site-packages/*",
+    "*/dist-packages/*",
+]
+
+[tool.coverage.paths]
+tiktok_downloader = ["tiktok_downloader", "*/tiktok-downloader/tiktok_downloader"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
