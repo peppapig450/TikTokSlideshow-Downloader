@@ -6,7 +6,7 @@ from typing import Any
 from playwright.async_api import async_playwright
 
 from ..config import Config, PartialConfigDict
-from ..cookies import CookieManager
+from ..cookies import CookieManager, JSONCookie
 from ..logger import get_logger
 from ..url_parser import extract_video_id
 from .base import BaseExtractor
@@ -32,22 +32,29 @@ class SlideshowExtractor(BaseExtractor[SlideshowResult]):
         config: Config | PartialConfigDict | None = None,
         *,
         cookie_profile: str | None = None,
+        cookies: list[JSONCookie] | None = None,
         user_agents: list[str] | None = None,
     ) -> None:
+        self.cookie_profile = cookie_profile if cookies is None else None
+        self.cookie_data = cookies
         super().__init__(
             config,
-            cookie_profile=cookie_profile,
+            cookie_profile=self.cookie_profile,
+            cookies=cookies,
             user_agents=user_agents,
         )
-        self.cookie_profile = cookie_profile
 
     async def _add_cookies(self, context: Any) -> None:
-        if not self.cookie_profile:
-            return
-        try:
-            cookies = CookieManager().load(self.cookie_profile)
-        except Exception as exc:  # pragma: no cover - error path
-            logger.error("Failed to load cookies: %s", exc)
+        cookies: list[JSONCookie] | None
+        if self.cookie_data is not None:
+            cookies = self.cookie_data
+        elif self.cookie_profile:
+            try:
+                cookies = CookieManager().load(self.cookie_profile)
+            except Exception as exc:  # pragma: no cover - error path
+                logger.error("Failed to load cookies: %s", exc)
+                return
+        else:
             return
         formatted = [
             {

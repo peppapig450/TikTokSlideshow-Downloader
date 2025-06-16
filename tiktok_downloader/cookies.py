@@ -181,6 +181,84 @@ def _write_netscape(cookies: Iterable[JSONCookie | PlaywrightCookieType], file: 
                 continue
 
 
+def load_json_file(path: Path) -> list[JSONCookie]:
+    """Read cookies from ``path`` in JSON format."""
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:  # pragma: no cover - invalid file path
+        raise ValueError(f"Invalid JSON in {path}") from exc
+
+    if not isinstance(data, list):
+        raise ValueError("Cookie JSON must be a list")
+
+    cookies: list[JSONCookie] = []
+    for obj in data:
+        if not isinstance(obj, dict):
+            continue
+
+        cookie: JSONCookie = {
+            "name": str(obj.get("name", "")),
+            "value": str(obj.get("value", "")),
+            "domain": str(obj.get("domain", "")),
+        }
+
+        if "path" in obj:
+            cookie["path"] = str(obj.get("path", "/"))
+        if "secure" in obj:
+            cookie["secure"] = bool(obj.get("secure"))
+        if "httpOnly" in obj:
+            cookie["httpOnly"] = bool(obj.get("httpOnly"))
+        if "expirationDate" in obj or "expires" in obj:
+            exp_val = obj.get("expirationDate", obj.get("expires"))
+            ts = _parse_expires(exp_val)
+            cookie["expirationDate"] = ts
+            cookie["expires"] = ts
+
+        cookies.append(cookie)
+
+    return cookies
+
+
+def load_netscape_file(path: Path) -> list[JSONCookie]:
+    """Read cookies from ``path`` in Netscape text format."""
+
+    cookies: list[JSONCookie] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or (line.startswith("#") and not line.startswith("#HttpOnly_")):
+            continue
+
+        http_only = False
+        if line.startswith("#HttpOnly_"):
+            http_only = True
+            line = line[len("#HttpOnly_") :]
+
+        parts = line.split("\t")
+        if len(parts) != 7:  # noqa: PLR2004
+            logger.debug("Skipping malformed cookie line: %s", raw_line)
+            continue
+
+        domain, _domain_flag, path_str, secure_flag, expires_str, name, value = parts
+        secure = secure_flag.upper() == "TRUE"
+        expires = _parse_expires(expires_str)
+
+        cookie: JSONCookie = {
+            "name": name,
+            "value": value,
+            "domain": domain,
+            "path": path_str or "/",
+            "secure": secure,
+            "httpOnly": http_only,
+            "expirationDate": expires,
+            "expires": expires,
+        }
+
+        cookies.append(cookie)
+
+    return cookies
+
+
 class CookieManager:
     """
     Manages cookie storage and conversion for TikTok extraction.
@@ -267,6 +345,25 @@ class CookieManager:
             if path.is_file():
                 profiles.append(path.stem)
         return profiles
+
+    # ------------------------------------------------------------------
+    def load_from_file(self, path: PathLike, fmt: str | None = None) -> list[JSONCookie]:
+        """Load cookies from ``path`` using ``fmt`` if given."""
+
+        p = Path(path)
+        if not p.is_file():
+            raise FileNotFoundError(p)
+
+        if fmt is None:
+            fmt = "json" if p.suffix.lower() == ".json" else "netscape"
+
+        match fmt:
+            case "json":
+                return load_json_file(p)
+            case "netscape":
+                return load_netscape_file(p)
+            case _:
+                raise ValueError(f"Unknown cookie format: {fmt}")
 
 
 async def fetch_cookies(

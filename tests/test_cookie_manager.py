@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from tiktok_downloader.cookies import CookieManager
@@ -27,3 +28,27 @@ def test_write_netscape_domain_flags(tmp_path: Path) -> None:
     lines = dest.read_text().splitlines()
     assert ".tiktok.com\tTRUE\t/\tTRUE\t0\tc1\tv1" in lines
     assert "example.com\tFALSE\t/\tFALSE\t0\tc2\tv2" in lines
+
+
+def test_load_json_file(tmp_path: Path) -> None:
+    from tiktok_downloader.cookies import load_json_file
+
+    data = [{"name": "sid", "value": "1", "domain": "x", "path": "/"}]
+    file = tmp_path / "c.json"
+    file.write_text(json.dumps(data))
+
+    cookies = load_json_file(file)
+    assert cookies[0]["name"] == "sid"
+    assert cookies[0]["domain"] == "x"
+
+
+def test_load_netscape_file(tmp_path: Path) -> None:
+    from tiktok_downloader.cookies import load_netscape_file
+
+    text = "# Netscape HTTP Cookie File\nexample.com\tFALSE\t/\tFALSE\t0\tsid\t1\n"
+    file = tmp_path / "c.txt"
+    file.write_text(text)
+
+    cookies = load_netscape_file(file)
+    assert cookies[0]["name"] == "sid"
+    assert cookies[0]["domain"] == "example.com"

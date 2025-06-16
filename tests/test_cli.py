@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator, Sequence
 from pathlib import Path
 from typing import ClassVar
@@ -411,3 +412,46 @@ def test_slideshow_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert downloaded == [(["img1", "img2"], tmp_path / "s123")]
     assert captured["video_cookie"] == "prof"
     assert (tmp_path / "v123.bin").exists()
+
+
+def test_cookie_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    info = TikTokURLInfo("https://x", "https://x", "123", "video")
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)
+
+    cookie_file = tmp_path / "cookies.json"
+    data = [{"name": "sid", "value": "1", "domain": "x", "path": "/"}]
+    cookie_file.write_text(json.dumps(data))
+
+    captured: dict[str, object] = {}
+
+    class DummyExtractor:
+        def __init__(
+            self, *args: object, cookies: list[dict[str, object]] | None = None, **kw: object
+        ) -> None:
+            captured["cookies"] = cookies
+
+        def extract(self, url: str, download: bool = False) -> object:
+            dest = tmp_path / "123.bin"
+            dest.touch()
+            return type("Res", (), {"filepath": dest})()
+
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", lambda *a, **k: None)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "download",
+            "https://x",
+            "--cookie-file",
+            str(cookie_file),
+            "--cookie-format",
+            "json",
+            "--output",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["cookies"][0]["name"] == "sid"

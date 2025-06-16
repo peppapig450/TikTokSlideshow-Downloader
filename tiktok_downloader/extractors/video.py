@@ -11,7 +11,7 @@ import yt_dlp
 from yt_dlp.utils import DownloadError
 
 from ..config import Config, PartialConfigDict
-from ..cookies import CookieManager, _write_netscape
+from ..cookies import CookieManager, JSONCookie, _write_netscape
 from ..logger import get_logger
 from .base import BaseExtractor
 
@@ -41,20 +41,24 @@ class VideoExtractor(BaseExtractor[VideoResult]):
         config: Config | PartialConfigDict | None = None,
         *,
         cookie_profile: str | None = None,
+        cookies: list[JSONCookie] | None = None,
         user_agents: list[str] | None = None,
         quality: str | None = None,
     ) -> None:
+        cookie_list = cookies
+        if cookie_list is None and cookie_profile:
+            cookie_list = CookieManager().load(cookie_profile)
+
         super().__init__(
             config,
-            cookie_profile=cookie_profile,
+            cookies=cookie_list,
             user_agents=user_agents,
         )
         self.quality = quality or "best"
         self.cookie_file: Path | None = None
-        if cookie_profile:
-            cookies = CookieManager().load(cookie_profile)
+        if cookie_list:
             with tempfile.NamedTemporaryFile("w+", delete=False) as tmp:
-                _write_netscape(cookies, cast(TextIO, tmp))
+                _write_netscape(cookie_list, cast(TextIO, tmp))
                 tmp.flush()
                 self.cookie_file = Path(tmp.name)
 
@@ -68,7 +72,7 @@ class VideoExtractor(BaseExtractor[VideoResult]):
             "quiet": True,
         }
         if self.cookie_file:
-            opts["cookies"] = str(self.cookie_file)
+            opts["cookiefile"] = str(self.cookie_file)
 
         try:
             info_raw = yt_dlp.YoutubeDL(opts).extract_info(url, download=download)
@@ -115,7 +119,7 @@ class VideoExtractor(BaseExtractor[VideoResult]):
             "quiet": True,
         }
         if self.cookie_file:
-            opts["cookies"] = str(self.cookie_file)
+            opts["cookiefile"] = str(self.cookie_file)
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):

@@ -8,7 +8,7 @@ from typing import Any
 import requests
 
 from ..config import Config, PartialConfigDict
-from ..cookies import CookieManager
+from ..cookies import CookieManager, JSONCookie
 from ..logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,6 +22,7 @@ class BaseExtractor[T](ABC):
         config: Config | PartialConfigDict | None = None,
         *,
         cookie_profile: str | None = None,
+        cookies: list[JSONCookie] | None = None,
         user_agents: list[str] | None = None,
     ) -> None:
         """Initialize the extractor.
@@ -29,6 +30,7 @@ class BaseExtractor[T](ABC):
         Args:
             config: Existing :class:`Config` instance or dictionary of overrides.
             cookie_profile: Name of a saved cookie profile to load.
+            cookies: Cookie data to load directly instead of a profile.
             user_agents: Sequence of user-agent strings to rotate through. When
                 omitted, :data:`config`'s ``user_agent`` value is used.
         """
@@ -40,13 +42,18 @@ class BaseExtractor[T](ABC):
         self.session = requests.Session()
         self.session.headers["User-Agent"] = self.user_agents[self._agent_idx]
 
-        if cookie_profile:
+        if cookies is not None:
+            self._apply_cookies(cookies)
+        elif cookie_profile:
             self._load_cookies(cookie_profile)
 
     # ------------------------------------------------------------------
     def _load_cookies(self, profile: str) -> None:
         """Load cookies from ``profile`` into the session."""
         cookies = CookieManager().load(profile)
+        self._apply_cookies(cookies)
+
+    def _apply_cookies(self, cookies: list[JSONCookie]) -> None:
         for cookie in cookies:
             self.session.cookies.set(
                 cookie.get("name", ""),

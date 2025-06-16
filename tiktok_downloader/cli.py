@@ -23,6 +23,7 @@ from . import (
 )
 from .config import ConfigKey, is_config_key
 from .cookies import (
+    JSONCookie,
     _write_netscape,
     auto_fetch_cookies,
     fetch_cookies,
@@ -165,6 +166,13 @@ def verify(profile: str) -> None:
     help="File with newline separated URLs",
 )
 @click.option("--cookie-profile", "cookie_profile", help="Name of saved cookie profile")
+@click.option("--cookie-file", type=click.Path(path_type=Path), help="Path to cookie file")
+@click.option(
+    "--cookie-format",
+    type=click.Choice(["json", "netscape"]),
+    default=None,
+    help="Format of cookie file",
+)
 @click.option("--output", type=click.Path(path_type=Path), help="Output download directory")
 @click.option("--browser-timeout", type=int, help="Browser timeout in milliseconds")
 @click.option("--headless/--no-headless", default=None, help="Run the browser without UI")
@@ -197,6 +205,8 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     urls: tuple[str, ...],
     url_file: Path | None,
     cookie_profile: str | None,
+    cookie_file: Path | None,
+    cookie_format: str | None,
     output: Path | None,
     browser_timeout: int | None,
     headless: bool | None,
@@ -229,20 +239,31 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     if updates:
         cfg.update(updates)
 
-    if cookie_profile is None:
-        profiles = CookieManager().list_profiles()
-        cookie_profile = profiles[0] if len(profiles) == 1 else "Default"
+    cookie_data: list[JSONCookie] | None = None
+    if cookie_file is not None:
+        try:
+            cookie_data = CookieManager().load_from_file(cookie_file, cookie_format)
+            logger.info("Loaded %d cookies from %s", len(cookie_data), cookie_file)
+        except Exception as exc:
+            logger.error("Failed to load cookies: %s", exc)
+    else:
+        if cookie_profile is None:
+            profiles = CookieManager().list_profiles()
+            cookie_profile = profiles[0] if len(profiles) == 1 else "Default"
+        if cookie_profile:
+            try:
+                cookie_data = CookieManager().load(cookie_profile)
+                logger.info(
+                    "Loaded %d cookies from profile '%s'",
+                    len(cookie_data),
+                    cookie_profile,
+                )
+            except Exception as exc:
+                logger.error("Failed to load cookies: %s", exc)
 
     logger.info("Configuration loaded: %r", cfg.all)
 
     try:
-        if cookie_profile:
-            try:
-                cookies = CookieManager().load(cookie_profile)
-                logger.info("Loaded %d cookies from profile '%s'", len(cookies), cookie_profile)
-            except Exception as exc:
-                logger.error("Failed to load cookies: %s", exc)
-
         url_list: list[str] = list(urls)
         if url_file:
             for line in Path(url_file).read_text().splitlines():
@@ -291,17 +312,22 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
             progress_callback=callback,
         )
 
-        async def run_all(infos: Iterable[TikTokURLInfo]) -> None:
+        async def run_all(infos: Iterable[TikTokURLInfo]) -> None:  # noqa: C901
             sem = asyncio.Semaphore(manager.concurrency)
 
             async def worker(info: TikTokURLInfo) -> None:
                 try:
                     async with sem:
                         if info.content_type == "video":
+                            kw: dict[str, Any] = {}
+                            if cookie_data is not None:
+                                kw["cookies"] = cookie_data
+                            elif cookie_profile:
+                                kw["cookie_profile"] = cookie_profile
                             extractor = VideoExtractor(
                                 cfg,
-                                cookie_profile=cookie_profile,
                                 quality=quality,
+                                **kw,
                             )
                             if list_formats:
                                 lines = await asyncio.to_thread(
@@ -316,9 +342,14 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
                             dest = result.filepath or output_dir / (info.video_id + ".bin")
                             click.echo(f"Saved to {dest}")
                         else:
+                            slide_kw: dict[str, Any] = {}
+                            if cookie_data is not None:
+                                slide_kw["cookies"] = cookie_data
+                            elif cookie_profile:
+                                slide_kw["cookie_profile"] = cookie_profile
                             slide_ext = SlideshowExtractor(
                                 cfg,
-                                cookie_profile=cookie_profile,
+                                **slide_kw,
                             )
                             slide_res = await slide_ext.extract(info.resolved_url)
                             dest_dir = output_dir / info.video_id
