@@ -228,6 +228,10 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
     if updates:
         cfg.update(updates)
 
+    if cookie_profile is None:
+        profiles = CookieManager().list_profiles()
+        cookie_profile = profiles[0] if len(profiles) == 1 else "Default"
+
     logger.info("Configuration loaded: %r", cfg.all)
 
     try:
