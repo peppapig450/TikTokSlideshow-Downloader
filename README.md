@@ -12,6 +12,9 @@ tiktok-downloader download <url> [OPTIONS]
 Run ``tiktok-downloader download --help`` to see all configuration options.
 The ``--concurrency`` option controls how many downloads run in parallel.
 
+**Note**: You must export your TikTok cookies from the browser yourself.
+For Chrome, install [Get cookies.txt (LOCAL)][cookies-local] to export them.
+
 To export cookies saved in a JSON profile:
 
 ```bash
@@ -58,3 +61,4 @@ python -m tiktok_downloader download <url> [OPTIONS]
 This entry point loads your configuration and handles Ctrl+C gracefully.
 
 Debug logging is disabled by default. Use `--debug` or set `TIKTOK_DOWNLOADER_DEBUG=true` to enable verbose output.
+[cookies-local]: https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
