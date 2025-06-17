@@ -42,7 +42,8 @@ def make_async_playwright(batches: list[list[str]], state: DummyState) -> Callab
             if self.idx < len(batches):
                 self.loaded.extend(batches[self.idx])
 
-        async def query_selector_all(self, _selector: str) -> list[Element]:
+        async def query_selector_all(self, selector: str) -> list[Element]:
+            state.setdefault("selectors", []).append(selector)
             return [Element(src) for src in self.loaded]
 
         async def wait_for_timeout(self, _ms: int) -> None:
@@ -126,6 +127,7 @@ async def test_deduplicate(monkeypatch: pytest.MonkeyPatch) -> None:
     result = await ext.extract("https://tiktok.com/@u/video/1234567890123456789")
     assert result.urls == ["a", "b", "c"]
     assert result.count == 3  # noqa: PLR2004
+    assert state["selectors"][0] == ".css-brxox6-ImgPhotoSlide.e10jea832"
 
 
 @pytest.mark.asyncio
