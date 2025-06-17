@@ -22,9 +22,9 @@ class DummyContent:
 
 
 class DummyResponse:
-    def __init__(self, data: bytes) -> None:
+    def __init__(self, data: bytes, ct: str = "image/jpeg") -> None:
         self.data = data
-        self.headers = {"Content-Length": str(len(data))}
+        self.headers = {"Content-Length": str(len(data)), "Content-Type": ct}
         self.content = DummyContent(data)
 
     async def __aenter__(self) -> Self:
@@ -76,9 +76,10 @@ async def test_retry_and_checksum(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
     manager = DownloadManager(cfg, progress=False)
     dest = tmp_path / "file.bin"
-    checksum = await manager.download("http://example", dest)
+    final, checksum = await manager.download("http://example/image", dest)
 
-    assert dest.exists()
+    assert final.exists()
+    assert final.suffix == ".jpg"
     assert checksum == hashlib.sha256(b"abc").hexdigest()
     assert len(attempts) == 3  # noqa: PLR2004
     assert sleeps == [1.0, 2.0]
