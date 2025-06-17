@@ -3,11 +3,14 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from tiktok_downloader.utils import (
     build_dest_path,
     checksum,
     cleanup_temp_files,
     ensure_directory,
+    guess_extension,
     is_duplicate,
     safe_filename,
     sanitize_filename,
@@ -75,3 +78,25 @@ def test_build_dest_path_sanitizes_and_uniques(tmp_path: Path) -> None:
     result = build_dest_path(tmp_path, name, "bin")
 
     assert result == tmp_path / f"{sanitized}_1.bin"
+
+
+def test_guess_extension_uses_url_suffix(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "tiktok_downloader.utils.mimetypes.guess_extension",
+        lambda ct: None,
+    )
+
+    url = "https://example.com/path/file.ext?query=1"
+
+    assert guess_extension(url, "application/unknown") == ".ext"
+
+
+def test_guess_extension_defaults_to_bin(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "tiktok_downloader.utils.mimetypes.guess_extension",
+        lambda ct: None,
+    )
+
+    url = "https://example.com/download"
+
+    assert guess_extension(url, None) == ".bin"

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import mimetypes
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 __all__ = [
     "build_dest_path",
     "checksum",
     "cleanup_temp_files",
     "ensure_directory",
+    "guess_extension",
     "is_duplicate",
     "safe_filename",
     "sanitize_filename",
@@ -55,6 +58,17 @@ def ensure_directory(path: Path) -> None:
     """Create ``path`` if it doesn't already exist."""
 
     path.mkdir(parents=True, exist_ok=True)
+
+
+def guess_extension(url: str, content_type: str | None) -> str:
+    """Return the best file extension for ``url`` and ``content_type``."""
+
+    ct = content_type.split(";")[0].strip() if content_type else ""
+    ext = mimetypes.guess_extension(ct)
+    if ext:
+        return ext
+    suffix = Path(urlparse(url).path).suffix
+    return suffix if suffix else ".bin"
 
 
 def checksum(path: Path) -> str:

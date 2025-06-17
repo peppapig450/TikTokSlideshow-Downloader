@@ -414,6 +414,40 @@ def test_slideshow_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert (tmp_path / "v123.bin").exists()
 
 
+def test_slideshow_images_renamed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    info = TikTokURLInfo("https://slide", "https://slide", "s123", "slideshow")
+    monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)
+
+    class DummyExtractor:
+        def __init__(self, *args: object, **kw: object) -> None:
+            pass
+
+        async def extract(self, url: str) -> object:
+            return type("Res", (), {"urls": ["img1", "img2"]})()
+
+    async def fake_download_all(
+        self: object, urls: Sequence[str], dest_dir: Path
+    ) -> list[tuple[str, Path, str]]:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        results: list[tuple[str, Path, str]] = []
+        for u in urls:
+            dest = dest_dir / f"{Path(u).name}.jpg"
+            dest.touch()
+            results.append((u, dest, "hash"))
+        return results
+
+    monkeypatch.setattr("tiktok_downloader.cli.SlideshowExtractor", DummyExtractor)
+    monkeypatch.setattr("tiktok_downloader.cli.VideoExtractor", lambda *a, **k: None)
+    monkeypatch.setattr("tiktok_downloader.cli.DownloadManager.download_all", fake_download_all)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["download", "https://slide", "--output", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "s123" / "img1.jpg").exists()
+    assert (tmp_path / "s123" / "img2.jpg").exists()
+
+
 def test_cookie_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     info = TikTokURLInfo("https://x", "https://x", "123", "video")
     monkeypatch.setattr("tiktok_downloader.cli.parse_tiktok_url", lambda u: info)

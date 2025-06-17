@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from .config import Config
 from .logger import get_logger
-from .utils import build_dest_path
+from .utils import build_dest_path, guess_extension, unique_path
 
 logger = get_logger(__name__)
 
@@ -32,8 +32,11 @@ class DownloadManager:
         self.progress = progress
         self.progress_callback = progress_callback
 
-    async def download(self, url: str, dest_path: Path) -> str:
-        """Download ``url`` to ``dest_path`` with retries and return SHA256."""
+    async def download(self, url: str, dest_path: Path) -> tuple[Path, str]:
+        """Download ``url`` to ``dest_path`` with retries.
+
+        Returns the final destination path and SHA256 checksum.
+        """
         max_retries = self.config.get("max_retries")
         backoff = 1.0
         last_exc: Exception | None = None
@@ -46,7 +49,10 @@ class DownloadManager:
                     session.get(url) as response,
                 ):
                     response.raise_for_status()
-                    return await self._save_response(response, dest_path)
+                    ext = guess_extension(url, response.headers.get("Content-Type"))
+                    final = unique_path(dest_path.with_suffix(ext))
+                    checksum = await self._save_response(response, final)
+                    return final, checksum
             except Exception as exc:  # pragma: no cover - network error path
                 last_exc = exc
                 logger.warning("Attempt %d for %s failed: %s", attempt + 1, url, exc)
@@ -94,10 +100,10 @@ class DownloadManager:
         results: list[tuple[str, Path, str]] = []
 
         async def worker(url: str) -> None:
-            dest = build_dest_path(directory, Path(url).name)
+            dest = build_dest_path(directory, Path(url).stem)
             async with semaphore:
-                checksum = await self.download(url, dest)
-            results.append((url, dest, checksum))
+                final, checksum = await self.download(url, dest)
+            results.append((url, final, checksum))
 
         await asyncio.gather(*(worker(u) for u in urls))
         return results
