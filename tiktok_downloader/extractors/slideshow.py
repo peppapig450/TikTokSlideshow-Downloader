@@ -69,7 +69,9 @@ class SlideshowExtractor(BaseExtractor[SlideshowResult]):
         await context.add_cookies(formatted)
 
     async def _collect_images(self, page: Any) -> list[str]:
-        elements = await page.query_selector_all("img[src]")
+        elements = await page.query_selector_all(
+            ".css-brxox6-ImgPhotoSlide.e10jea832",
+        )
         urls: list[str] = []
         for el in elements:
             src = await el.get_attribute("src")
