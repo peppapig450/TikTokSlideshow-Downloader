@@ -32,8 +32,7 @@ Run the command, log into TikTok in the opened browser window and press Enter
 when ready. The cookies will be saved under ``<profile>.json`` for reuse.
 
 **Note:** The ``cookies login`` and ``cookies auto`` commands are currently
-disabled while the browser automation is being updated. See the issue tracker
-for progress.
+disabled while the browser automation is being updated. See the [issue tracker](<https://github.com/peppapig450/TikTokSlideshow-Downloader/issues>) for progress.
 
 To fetch cookies directly from an existing Chrome/Chromium profile:
 
@@ -65,4 +64,5 @@ python -m tiktok_downloader download <url> [OPTIONS]
 This entry point loads your configuration and handles Ctrl+C gracefully.
 
 Debug logging is disabled by default. Use `--debug` or set `TIKTOK_DOWNLOADER_DEBUG=true` to enable verbose output.
-[cookies-local]: https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
+
+[cookies-local]: https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc
