@@ -447,9 +447,16 @@ def profile(  # noqa: PLR0913
         cookie_profile=None if cookie_data is not None else cookie_profile,
     )
     try:
-        urls = scraper.fetch_urls()
+        urls = asyncio.run(scraper.fetch_urls_browser())
     except Exception as exc:
-        raise click.ClickException(str(exc)) from exc
+        logger.error("Browser scraping failed: %s", exc)
+        urls = []
+
+    if not urls:
+        try:
+            urls = scraper.fetch_urls()
+        except Exception as exc:  # pragma: no cover - network path
+            raise click.ClickException(str(exc)) from exc
 
     if not urls:
         click.echo("No posts found")
