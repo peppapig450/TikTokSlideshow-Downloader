@@ -1,0 +1,48 @@
+name: Dependabot Auto Merge
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, ready_for_review, labeled, unlabeled]
+
+# Lock down perms globally
+permissions: {}
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}-dependabot-automerge
+  cancel-in-progress: false
+
+jobs:
+  dependabot-automerge:
+    # Only run for non-draft PRs authored by Dependabot
+    if: >
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Job-scoped minimal perms
+    permissions:
+      contents: write # needed to merge
+      pull-requests: write # needed to approve / enable auto-merge
+      checks: read # read CI status
+      statuses: read # read commit statuses
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          alert-lookup: false
+          compat-lookup: false
+
+      - name: Decide & enable auto-merge
+        run: |
+          .github/scripts/enable-automerge.sh \
+            "${{ steps.meta.outputs.dependency-type }}" \
+            "${{ steps.meta.outputs.update-type }}" \
+            "${{ github.event.pull_request.html_url }}"
