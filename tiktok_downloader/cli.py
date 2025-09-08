@@ -28,6 +28,7 @@ from .cookies import (
     verify_cookie_profile,
 )
 from .extractors import SlideshowExtractor
+from .profile import ProfileScraper
 
 logger = get_logger(__name__)
 
@@ -358,3 +359,125 @@ def download(  # noqa: PLR0913,C901,PLR0915,PLR0912
         if isinstance(exc, ValueError):
             raise click.ClickException(f"Invalid input: {exc}") from exc
         raise click.ClickException(str(exc)) from exc
+
+
+@main.command()
+@click.argument("username")
+@click.option("--cookie-profile", "cookie_profile", help="Name of saved cookie profile")
+@click.option("--cookie-file", type=click.Path(path_type=Path), help="Path to cookie file")
+@click.option(
+    "--cookie-format",
+    type=click.Choice(["json", "netscape"]),
+    default=None,
+    help="Format of cookie file",
+)
+@click.option("--output", type=click.Path(path_type=Path), help="Output download directory")
+@click.option("--browser-timeout", type=int, help="Browser timeout in milliseconds")
+@click.option("--headless/--no-headless", default=None, help="Run the browser without UI")
+@click.option("--debug/--no-debug", default=None, help="Enable verbose debug logging")
+@click.option("--max-retries", type=int, help="Maximum download retries")
+@click.option("--chunk-size", type=int, help="Stream chunk size in bytes")
+@click.option(
+    "--log-level",
+    type=click.Choice([lvl.value for lvl in LogLevel]),
+    help="Set logging verbosity",
+)
+@click.option("--user-agent", type=str, help="HTTP user agent string")
+@click.option(
+    "--quality",
+    type=str,
+    default=None,
+    help="Video format preset such as best, worst, 720p, etc.",
+)
+@click.option(
+    "--concurrency",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Maximum concurrent downloads",
+)
+@click.option("--list-formats", is_flag=True, help="List available formats and exit")
+@click.pass_context
+def profile(  # noqa: PLR0913
+    ctx: click.Context,
+    username: str,
+    cookie_profile: str | None,
+    cookie_file: Path | None,
+    cookie_format: str | None,
+    output: Path | None,
+    browser_timeout: int | None,
+    headless: bool | None,
+    debug: bool | None,
+    max_retries: int | None,
+    chunk_size: int | None,
+    log_level: str | None,
+    user_agent: str | None,
+    quality: str | None,
+    concurrency: int,
+    list_formats: bool,
+) -> None:
+    """Download all posts from ``username``."""
+    cfg: Config = ctx.obj["config"]
+
+    updates = _collect_config_updates(
+        output=output,
+        browser_timeout=browser_timeout,
+        headless=headless,
+        debug=debug,
+        max_retries=max_retries,
+        chunk_size=chunk_size,
+        log_level=log_level,
+        user_agent=user_agent,
+    )
+    if updates:
+        cfg.update(updates)
+
+    cookie_data: list[JSONCookie] | None = None
+    if cookie_file is not None:
+        try:
+            cookie_data = CookieManager().load_from_file(cookie_file, cookie_format)
+            logger.info("Loaded %d cookies from %s", len(cookie_data), cookie_file)
+        except Exception as exc:
+            logger.error("Failed to load cookies: %s", exc)
+
+    scraper = ProfileScraper(
+        username,
+        cfg,
+        cookies=cookie_data,
+        cookie_profile=None if cookie_data is not None else cookie_profile,
+    )
+    try:
+        urls = asyncio.run(scraper.fetch_urls_browser())
+    except Exception as exc:
+        logger.error("Browser scraping failed: %s", exc)
+        urls = []
+
+    if not urls:
+        try:
+            urls = scraper.fetch_urls()
+        except Exception as exc:  # pragma: no cover - network path
+            raise click.ClickException(str(exc)) from exc
+
+    if not urls:
+        click.echo("No posts found")
+        return
+
+    ctx.invoke(
+        download,
+        urls=tuple(urls),
+        url_file=None,
+        cookie_profile=cookie_profile,
+        cookie_file=cookie_file,
+        cookie_format=cookie_format,
+        output=output,
+        browser_timeout=browser_timeout,
+        headless=headless,
+        debug=debug,
+        max_retries=max_retries,
+        chunk_size=chunk_size,
+        log_level=log_level,
+        user_agent=user_agent,
+        quality=quality,
+        concurrency=concurrency,
+        list_formats=list_formats,
+    )
