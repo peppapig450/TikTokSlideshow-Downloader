@@ -20,7 +20,7 @@ jobs:
           python-version: "3.13"
 
       - name: Pre-commit autoupdate
-        uses: browniebroke/pre-commit-autoupdate-action@v1.0.0
+        uses: browniebroke/pre-commit-autoupdate-action@v1.0.1
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
