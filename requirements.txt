@@ -9,7 +9,7 @@ click==8.2.1
 distlib==0.4.0
 filelock==3.19.1
 frozenlist==1.7.0
-greenlet==3.2.3
+greenlet==3.2.4
 identify==2.6.13
 idna==3.10
 iniconfig==2.1.0
