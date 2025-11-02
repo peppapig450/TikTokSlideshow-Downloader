@@ -30,7 +30,7 @@ pyyaml==6.0.2
 requests==2.32.3
 ruff==0.12.5
 tqdm==4.67.1
-types-requests==2.32.4.20250809
+types-requests==2.32.4.20250913
 types-tqdm==4.67.0.20250809
 typing-extensions==4.13.2
 urllib3==2.5.0
