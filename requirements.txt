@@ -18,7 +18,7 @@ mypy==1.18.2
 mypy-extensions==1.1.0
 nodeenv==1.9.1
 packaging==25.0
-platformdirs==4.3.7
+platformdirs==4.5.0
 playwright==1.55.0
 pluggy==1.6.0
 pre-commit==4.4.0
