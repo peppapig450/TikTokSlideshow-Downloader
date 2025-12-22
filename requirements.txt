@@ -36,4 +36,4 @@ typing-extensions==4.15.0
 urllib3==2.6.2
 virtualenv==20.35.4
 yarl==1.22.0
-yt-dlp==2025.11.12
+yt-dlp==2025.12.8
