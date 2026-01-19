@@ -28,7 +28,7 @@ pytest==8.4.2
 pytest-asyncio==1.1.0
 pyyaml==6.0.3
 requests==2.32.5
-ruff==0.12.5
+ruff==0.14.13
 tqdm==4.67.1
 types-requests==2.32.4.20250913
 types-tqdm==4.67.0.20250809
