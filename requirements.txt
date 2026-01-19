@@ -34,6 +34,6 @@ types-requests==2.32.4.20250913
 types-tqdm==4.67.0.20250809
 typing-extensions==4.15.0
 urllib3==2.6.3
-virtualenv==20.35.4
+virtualenv==20.36.1
 yarl==1.22.0
 yt-dlp==2025.12.8
