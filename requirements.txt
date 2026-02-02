@@ -13,7 +13,7 @@ greenlet==3.3.0
 identify==2.6.16
 idna==3.11
 iniconfig==2.3.0
-multidict==6.7.0
+multidict==6.7.1
 mypy==1.19.1
 mypy-extensions==1.1.0
 nodeenv==1.10.0
