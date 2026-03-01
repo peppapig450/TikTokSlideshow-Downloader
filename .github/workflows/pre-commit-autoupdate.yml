@@ -23,7 +23,7 @@ jobs:
         uses: browniebroke/pre-commit-autoupdate-action@v1.0.1
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         if: always()
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
