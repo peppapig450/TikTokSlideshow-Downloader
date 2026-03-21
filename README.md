@@ -12,6 +12,12 @@ tiktok-downloader download <url> [OPTIONS]
 Run ``tiktok-downloader download --help`` to see all configuration options.
 The ``--concurrency`` option controls how many downloads run in parallel.
 
+To download every post from a user profile use the ``profile`` command:
+
+```bash
+tiktok-downloader profile <username> [OPTIONS]
+```
+
 **Note**: You must export your TikTok cookies from the browser yourself.
 For Chrome, install [Get cookies.txt (LOCAL)][cookies-local] to export them.
 
