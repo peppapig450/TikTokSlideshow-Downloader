@@ -183,7 +183,7 @@ def test_multiple_urls(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             pass
 
         def extract(self, url: str, download: bool = False) -> object:
-            vid = url.split("/")[-1]
+            vid = url.rsplit("/", maxsplit=1)[-1]
             dest = tmp_path / f"{vid}.bin"
             dest.touch()
             return type("Res", (), {"filepath": dest})()
@@ -218,7 +218,7 @@ def test_urls_from_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
             pass
 
         def extract(self, url: str, download: bool = False) -> object:
-            vid = url.split("/")[-1]
+            vid = url.rsplit("/", maxsplit=1)[-1]
             dest = tmp_path / f"{vid}.bin"
             dest.touch()
             return type("Res", (), {"filepath": dest})()
